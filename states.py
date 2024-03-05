@@ -1,0 +1,6 @@
+
+
+class States:
+    SUGGEST_TASK = 'SUGGEST_TASK'
+    ASK_XSTS = 'ASK_XSTS'
+    ASK_TRANSLATION = 'ASK_TRANSLATION'
