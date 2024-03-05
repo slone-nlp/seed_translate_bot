@@ -5,7 +5,6 @@ import logging
 import os
 import random
 import time
-import uuid
 from datetime import datetime
 from typing import List
 
@@ -23,7 +22,7 @@ logger = logging.getLogger(__name__)
 
 
 TOKEN = os.environ["TOKEN"]
-BASE_URL = os.environ.get("BASE_URL", "https://wizard-of-music.herokuapp.com/")
+BASE_URL = os.environ.get("BASE_URL")
 MONGO_URL = os.environ.get("MONGODB_URI")
 TELEBOT_URL = "telegram/"
 
@@ -170,7 +169,17 @@ def process_message(msg: telebot.types.Message):
         )
         print("class: no text detected")
     elif text in {"/start", "/help"}:
-        send_text_to_user(user_id, texts.HELP, reply_markup=default_markup)
+        send_text_to_user(
+            user_id, texts.HELP, reply_markup=default_markup, parse_mode="html"
+        )
+
+    # The setup scenario (here we enter only!)
+    elif text in {"/setup"}:
+        response, suggests = tasking.do_ask_setup(user=user)
+        DB.save_user(user)
+        send_text_to_user(user.user_id, response, suggests=suggests, parse_mode="html")
+
+    # The main scenario
     elif (
         text in {"/task"}
         or (user.state_id == States.SUGGEST_TASK and text in {texts.RESP_SKIP_TASK})
@@ -228,17 +237,42 @@ def process_message(msg: telebot.types.Message):
         DB.save_user(user)
         send_text_to_user(user_id, resp, suggests=suggests)
 
-    # the lowest priority: accepting any text as translation!
+    # Free-form inputs; the intent depends only on the state
+    # accepting any text as translation!
     elif user.state_id == States.ASK_TRANSLATION:
         resp, suggests = tasking.do_save_translation_and_ask_for_next(
             user=user, db=DB, user_text=text
         )
         DB.save_user(user)
         send_text_to_user(user_id, resp, suggests=suggests)
+
+    elif user.state_id == States.SETUP_ASK_SRC_LANG:
+        langs = [lang.strip() for lang in text.strip().split(",")]
+        langs = [lang for lang in langs if lang]
+        user.src_langs = langs
+        response, suggests = tasking.do_ask_setup(user=user)
+        DB.save_user(user)
+        send_text_to_user(user.user_id, response, suggests=suggests, parse_mode="html")
+
+    elif user.state_id == States.SETUP_ASK_TGT_LANG:
+        langs = [lang.strip() for lang in text.strip().split(",")]
+        langs = [lang for lang in langs if lang]
+        user.tgt_langs = langs
+        response, suggests = tasking.do_ask_setup(user=user)
+        DB.save_user(user)
+        send_text_to_user(user.user_id, response, suggests=suggests, parse_mode="html")
+
+    elif user.state_id == States.SETUP_ASK_CONTACT_INFO:
+        user.contact = text
+        response, suggests = tasking.do_ask_setup(user=user)
+        DB.save_user(user)
+        send_text_to_user(user.user_id, response, suggests=suggests, parse_mode="html")
+
+    # The last resort: non-contextual fallback
     else:
         send_text_to_user(
             user_id,
-            "Я пока больше не умею отправлять никаких сообщений!",  # noqa
+            texts.FALLBACK,
             reply_markup=default_markup,
         )
 

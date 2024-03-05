@@ -113,3 +113,20 @@ def do_save_translation_and_ask_for_next(
     # Ask for a new translation in the same task
     task = db.get_task(task_id=res.task_id)
     return do_assign_input(user=user, db=db, task=task)
+
+
+def do_ask_setup(user: UserState) -> Tuple[str, List[str]]:
+    suggests = []
+    if not user.src_langs:
+        user.state_id = States.SETUP_ASK_SRC_LANG
+        response = texts.SETUP_ASK_SRC_LANG
+    elif not user.tgt_langs:
+        user.state_id = States.SETUP_ASK_TGT_LANG
+        response = texts.SETUP_ASK_TGT_LANG
+    elif not user.contact:
+        user.state_id = States.SETUP_ASK_CONTACT_INFO
+        response = texts.SETUP_ASK_CONTACT_INFO
+    else:
+        user.state_id = None
+        response = texts.SETUP_READY
+    return response, suggests
