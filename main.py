@@ -206,16 +206,16 @@ def process_message(msg: telebot.types.Message):
             send_text_to_user(
                 user_id, resp, suggests=suggests, parse_mode="html"
             )  # For some reason, markdown is malformed with urls
+
     elif user.state_id == States.SUGGEST_TASK and text in {texts.RESP_TAKE_TASK}:
         task = DB.get_task(user.curr_task_id)
         if task is None:
             send_text_to_user(
-                user_id, "Простите, задача потерялась.", reply_markup=default_markup
+                user_id, texts.RESP_TASK_LOST, reply_markup=default_markup
             )
             user.curr_task_id = None
             user.state_id = None
             DB.save_user(user)
-            # TODO: suggest what to do next
         else:
             task.locked = True
             DB.save_task(task)
@@ -235,6 +235,31 @@ def process_message(msg: telebot.types.Message):
             user=user, db=DB, user_text=text
         )
         DB.save_user(user)
+        send_text_to_user(user_id, resp, suggests=suggests)
+
+    # States that expect a fixed text but get something else:
+    # re-ask the same question
+    elif (
+        user.state_id == States.ASK_COHERENCE and text not in texts.COHERENCE_RESPONSES
+    ):
+        inp = DB.get_input(input_id=user.curr_sent_id)
+        res = DB.get_result(result_id=user.curr_result_id)
+        resp, suggests = tasking.do_ask_coherence(
+            user=user,
+            db=DB,
+            inp=inp,
+            res=res,
+        )
+        send_text_to_user(user_id, resp, suggests=suggests)
+    elif user.state_id == States.ASK_XSTS and text not in texts.XSTS_RESPONSES:
+        inp = DB.get_input(input_id=user.curr_sent_id)
+        res = DB.get_result(result_id=user.curr_result_id)
+        resp, suggests = tasking.do_ask_xsts(
+            user=user,
+            db=DB,
+            inp=inp,
+            res=res,
+        )
         send_text_to_user(user_id, resp, suggests=suggests)
 
     # Free-form inputs; the intent depends only on the state

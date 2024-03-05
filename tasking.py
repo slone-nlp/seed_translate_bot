@@ -39,7 +39,6 @@ def do_assign_input(
 def do_ask_to_translate(
     user: UserState, db: Database, inp: TransInput, res: TransResult
 ) -> Tuple[str, List[str]]:
-    print("the problematic source is", inp)
     src_text = inp.source
     response = (
         f"Вот исходный текст: *{src_text}*\n\nПожалуйста, предложите его перевод:"
@@ -98,6 +97,7 @@ def do_save_xsts_and_ask_for_translation(
     res.old_translation_score = score_value
     db.save_result(res)
     # ask for a new translation
+    # TODO: maybe, if both XSTS and coherence are good, go directly to the next input?
     return do_ask_to_translate(user=user, db=db, inp=inp, res=res)
 
 

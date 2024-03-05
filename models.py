@@ -68,6 +68,7 @@ class TransProject(BaseModel):
     description: Optional[str] = None
     src_code: Optional[str] = None
     tgt_code: Optional[str] = None
+    # TODO: reconsider these options; they look too expensive.
     overlap: int = 3
     min_score: int = 4
 
@@ -87,7 +88,6 @@ class TransInput(BaseModel):
     task_id: int
     input_id: int
     source: str
-    # TODO: maybe remove this filed, because the candidates will be presented as task results
     candidate: Optional[str] = None
     meta: Optional[Dict] = None
 
@@ -133,16 +133,26 @@ class Database:
         update_user_state(users_collection=self.mongo_users, state=user)
 
     def get_new_task(self, user: UserState) -> Optional[TransTask]:
-        # TODO: filter by the current project and its languages
-        # TODO: maybe, prioritize the tasks by number of completions
+        # TODO: in the future, filter by the current project and its languages
         unfinished_task_ids = {
-            task["task_id"]
+            (task["task_id"], task["completions"])
             for task in self.trans_tasks.find({"completed": False, "locked": False})
         }
         if len(unfinished_task_ids) == 0:
             logger.info(f"Did not find any unfinished tasks!")
             return
-        task_id = random.choice(list(unfinished_task_ids))
+
+        # prioritize the tasks with the lowest number of completions
+        min_completion = min(
+            [completion for task_id, completion in unfinished_task_ids]
+        )
+        least_completed_ids = [
+            task_id
+            for task_id, completion in unfinished_task_ids
+            if completion == min_completion
+        ]
+
+        task_id = random.choice(least_completed_ids)
         logger.info(
             f"Chose the task {task_id} among {len(unfinished_task_ids)} options."
         )
@@ -163,6 +173,7 @@ class Database:
             TransInput.model_construct(**obj)
             for obj in self.trans_inputs.find({"task_id": task.task_id})
         ]
+        # TODO: maybe, consider only the inputs which don't have perfect translations yet.
         prev_inputs = sorted(
             [inp for inp in all_inputs if inp.input_id > prev_sent_id],
             key=lambda x: x.input_id,
