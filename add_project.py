@@ -1,9 +1,11 @@
-import models
 import os
+
 import pandas as pd
 from tqdm.auto import tqdm
 
-MONGO_URL = os.environ.get('MONGODB_URI')
+import models
+
+MONGO_URL = os.environ.get("MONGODB_URI")
 
 DB = models.Database.setup(MONGO_URL)
 
@@ -13,9 +15,7 @@ PROMPT_TEMPLATE = """"Чтобы приступить к переводу, ре�
 EMPTY_TEXTS = {"-"}
 
 
-def add_project(
-    fn="data/NLLB-seed-translation - nllb-seed-eng-rus.tsv"
-):
+def add_project(fn="data/NLLB-seed-translation - nllb-seed-eng-rus.tsv"):
     df = pd.read_csv(fn, sep="\t")
     print(df.isnull().mean())
 
@@ -31,7 +31,7 @@ def add_project(
         n_tasks += 1
         task_inputs = []
         for i, row in task_df.iterrows():
-            src_text, tgt_text = row['eng_Latn'], row['Wiki text']
+            src_text, tgt_text = row["eng_Latn"], row["Wiki text"]
             if not tgt_text or tgt_text in EMPTY_TEXTS:
                 tgt_text = None
             inp = DB.create_input(
@@ -39,7 +39,7 @@ def add_project(
                 task=task,
                 source=src_text,
                 candidate=tgt_text,
-                save=False
+                save=False,
             )
             task_inputs.append(inp)
             n_inputs += 1
@@ -48,5 +48,5 @@ def add_project(
     print(f"Created {n_tasks} tasks witn {n_inputs} inputs!")
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     add_project()

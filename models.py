@@ -1,13 +1,13 @@
-from typing import Optional, List, Dict
-from pydantic import BaseModel
-import telebot
-from pymongo.collection import Collection
-
-from pymongo import MongoClient
-import mongomock
-import random
 import logging
+import random
 import time
+from typing import Dict, List, Optional
+
+import mongomock
+import telebot
+from pydantic import BaseModel
+from pymongo import MongoClient
+from pymongo.collection import Collection
 
 logger = logging.getLogger(__name__)
 
@@ -38,15 +38,17 @@ class UserState(BaseModel):
 
 def update_user_state(users_collection: Collection, state: UserState):
     dumped = state.model_dump()
-    print('dumped: ', type(dumped), dumped)
-    users_collection.update_one(filter={"user_id": state.user_id}, update={"$set": dumped}, upsert=True)
+    print("dumped: ", type(dumped), dumped)
+    users_collection.update_one(
+        filter={"user_id": state.user_id}, update={"$set": dumped}, upsert=True
+    )
 
 
 def find_user(users_collection: Collection, user: telebot.types.User) -> UserState:
     user_id = user.id
-    obj = users_collection.find_one({'user_id': user_id})
+    obj = users_collection.find_one({"user_id": user_id})
     if obj is None:
-        print('creating a new user!')
+        print("creating a new user!")
         state = UserState(
             user_id=user_id,
             username=user.username,
@@ -55,7 +57,7 @@ def find_user(users_collection: Collection, user: telebot.types.User) -> UserSta
         )
         update_user_state(users_collection, state)
     else:
-        print('loading a user!')
+        print("loading a user!")
         state = UserState.model_construct(**obj)
     return state
 
@@ -106,19 +108,19 @@ class TransResult(BaseModel):
 class Database:
     def __init__(self, mongo_db):
         # UserState
-        self.mongo_users: Collection = mongo_db.get_collection('users')
+        self.mongo_users: Collection = mongo_db.get_collection("users")
 
         # user_id, from_user, text, timestamp, message_id
-        self.mongo_messages: Collection = mongo_db.get_collection('messages')
+        self.mongo_messages: Collection = mongo_db.get_collection("messages")
 
         # translation-related stuff
-        self.trans_projects: Collection = mongo_db.get_collection('trans_projects')
-        self.trans_tasks: Collection = mongo_db.get_collection('trans_tasks')
-        self.trans_inputs: Collection = mongo_db.get_collection('trans_inputs')
-        self.trans_results: Collection = mongo_db.get_collection('trans_results')
+        self.trans_projects: Collection = mongo_db.get_collection("trans_projects")
+        self.trans_tasks: Collection = mongo_db.get_collection("trans_tasks")
+        self.trans_inputs: Collection = mongo_db.get_collection("trans_inputs")
+        self.trans_results: Collection = mongo_db.get_collection("trans_results")
 
     @classmethod
-    def setup(cls, mongo_url: str) -> 'Database':
+    def setup(cls, mongo_url: str) -> "Database":
         if mongo_url is not None:
             mongo_client = MongoClient(mongo_url)
             mongo_db = mongo_client.get_default_database()
@@ -133,12 +135,17 @@ class Database:
     def get_new_task(self, user: UserState) -> Optional[TransTask]:
         # TODO: filter by the current project and its languages
         # TODO: maybe, prioritize the tasks by number of completions
-        unfinished_task_ids = {task['task_id'] for task in self.trans_tasks.find({"completed": False, "locked": False})}
+        unfinished_task_ids = {
+            task["task_id"]
+            for task in self.trans_tasks.find({"completed": False, "locked": False})
+        }
         if len(unfinished_task_ids) == 0:
             logger.info(f"Did not find any unfinished tasks!")
             return
         task_id = random.choice(list(unfinished_task_ids))
-        logger.info(f"Chose the task {task_id} among {len(unfinished_task_ids)} options.")
+        logger.info(
+            f"Chose the task {task_id} among {len(unfinished_task_ids)} options."
+        )
         return self.get_task(task_id)
 
     def get_task(self, task_id: int) -> Optional[TransTask]:
@@ -147,19 +154,24 @@ class Database:
             task = TransTask.model_construct(**obj)
             return task
 
-    def get_next_input(self, task: TransTask, prev_sent_id: Optional[int]) -> Optional[TransInput]:
+    def get_next_input(
+        self, task: TransTask, prev_sent_id: Optional[int]
+    ) -> Optional[TransInput]:
         if prev_sent_id is None:
             prev_sent_id = -1
         all_inputs = [
             TransInput.model_construct(**obj)
             for obj in self.trans_inputs.find({"task_id": task.task_id})
         ]
-        prev_inputs = sorted([inp for inp in all_inputs if inp.input_id > prev_sent_id], key=lambda x: x.input_id)
+        prev_inputs = sorted(
+            [inp for inp in all_inputs if inp.input_id > prev_sent_id],
+            key=lambda x: x.input_id,
+        )
         if prev_inputs:
             return prev_inputs[0]
 
     def create_project(self, title: str, save: bool = True):
-        project_ids = {p['project_id'] for p in self.trans_projects.find({})}
+        project_ids = {p["project_id"] for p in self.trans_projects.find({})}
         project_id = max(project_ids, default=0) + 1
         project = TransProject(
             project_id=project_id,
@@ -170,10 +182,16 @@ class Database:
         return project
 
     def save_project(self, project: TransProject) -> None:
-        self.trans_projects.update_one(filter={"project_id": project.project_id}, update={"$set": project.model_dump()}, upsert=True)
+        self.trans_projects.update_one(
+            filter={"project_id": project.project_id},
+            update={"$set": project.model_dump()},
+            upsert=True,
+        )
 
-    def create_task(self, project: TransProject, prompt: Optional[str] = None, save: bool = True):
-        ids = {t['task_id'] for t in self.trans_tasks.find({})}
+    def create_task(
+        self, project: TransProject, prompt: Optional[str] = None, save: bool = True
+    ):
+        ids = {t["task_id"] for t in self.trans_tasks.find({})}
         task_id = max(ids, default=0) + 1
         task = TransTask(
             project_id=project.project_id,
@@ -185,7 +203,11 @@ class Database:
         return task
 
     def save_task(self, task: TransTask) -> None:
-        self.trans_tasks.update_one(filter={"task_id": task.task_id}, update={"$set": task.model_dump()}, upsert=True)
+        self.trans_tasks.update_one(
+            filter={"task_id": task.task_id},
+            update={"$set": task.model_dump()},
+            upsert=True,
+        )
 
     def get_input(self, input_id: int) -> Optional[TransInput]:
         obj = self.trans_inputs.find_one({"input_id": input_id})
@@ -194,7 +216,9 @@ class Database:
             return inp
 
     def create_input(
-        self, project: TransProject, task: TransTask,
+        self,
+        project: TransProject,
+        task: TransTask,
         source: str,
         candidate: Optional[str] = None,
         save: bool = False,
@@ -212,14 +236,18 @@ class Database:
 
     def save_input(self, inp: TransInput) -> None:
         if inp.input_id == NO_ID:
-            ids = {inp['input_id'] for inp in self.trans_inputs.find({})}
+            ids = {inp["input_id"] for inp in self.trans_inputs.find({})}
             inp.input_id = max(ids, default=0) + 1
             self.trans_inputs.insert_one(inp.model_dump())
         else:
-            self.trans_inputs.update_one(filter={"input_id": inp.input_id}, update={"$set": inp.model_dump()}, upsert=True)
+            self.trans_inputs.update_one(
+                filter={"input_id": inp.input_id},
+                update={"$set": inp.model_dump()},
+                upsert=True,
+            )
 
     def add_inputs(self, inps: List[TransInput]) -> None:
-        ids = {inp['input_id'] for inp in self.trans_inputs.find({})}
+        ids = {inp["input_id"] for inp in self.trans_inputs.find({})}
         max_id = max(ids, default=0) + 1
         for i, inp in enumerate(inps):
             inp.input_id = max_id + i
@@ -244,8 +272,12 @@ class Database:
 
     def save_result(self, result: TransResult) -> None:
         if result.submission_id == NO_ID:
-            ids = {t['submission_id'] for t in self.trans_results.find({})}
+            ids = {t["submission_id"] for t in self.trans_results.find({})}
             result.submission_id = max(ids, default=0) + 1
             self.trans_results.insert_one(result.model_dump())
         else:
-            self.trans_results.update_one(filter={"submission_id": result.submission_id}, update={"$set": result.model_dump()}, upsert=True)
+            self.trans_results.update_one(
+                filter={"submission_id": result.submission_id},
+                update={"$set": result.model_dump()},
+                upsert=True,
+            )
