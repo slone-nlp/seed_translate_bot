@@ -231,7 +231,7 @@ def process_message(msg: telebot.types.Message):
         send_text_to_user(user_id, resp, suggests=suggests)
 
     elif user.state_id == States.ASK_XSTS and text in texts.XSTS_RESPONSES:
-        resp, suggests = tasking.do_save_xsts_and_ask_for_translation(
+        resp, suggests = tasking.do_save_xsts_and_ask_for_translation_or_assign_next_input(
             user=user, db=DB, user_text=text
         )
         DB.save_user(user)
@@ -243,22 +243,26 @@ def process_message(msg: telebot.types.Message):
         user.state_id == States.ASK_COHERENCE and text not in texts.COHERENCE_RESPONSES
     ):
         inp = DB.get_input(input_id=user.curr_sent_id)
-        res = DB.get_result(result_id=user.curr_result_id)
+        res = DB.get_translation(result_id=user.curr_result_id)
+        label = DB.get_label(label_id=user.curr_label_id)
         resp, suggests = tasking.do_ask_coherence(
             user=user,
             db=DB,
             inp=inp,
             res=res,
+            label=label,
         )
         send_text_to_user(user_id, resp, suggests=suggests)
     elif user.state_id == States.ASK_XSTS and text not in texts.XSTS_RESPONSES:
         inp = DB.get_input(input_id=user.curr_sent_id)
-        res = DB.get_result(result_id=user.curr_result_id)
+        res = DB.get_translation(result_id=user.curr_result_id)
+        label = DB.get_label(label_id=user.curr_label_id)
         resp, suggests = tasking.do_ask_xsts(
             user=user,
             db=DB,
             inp=inp,
             res=res,
+            label=label,
         )
         send_text_to_user(user_id, resp, suggests=suggests)
 

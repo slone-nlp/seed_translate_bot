@@ -1,3 +1,5 @@
+from models import INCOHERENT, COHERENT
+
 HELP = """Привет! Это бот для сбора переводов, авторства @cointegrated (канал @izolenta_mebiusa). 
 
 В настоящий момент он фокусируется на переводе корпуса NLLB-Seed (https://oldi.org/) с английского на русский.
@@ -43,7 +45,7 @@ COHERENCE_PROMPT = """Является перевод связным?
 RESP_INCOHERENT = "несвязный"
 RESP_COHERENT = "связный"
 COHERENCE_RESPONSES = [RESP_INCOHERENT, RESP_COHERENT]
-COHERENCE_RESPONSES_MAP = {RESP_INCOHERENT: 0, RESP_COHERENT: 1}
+COHERENCE_RESPONSES_MAP = {RESP_INCOHERENT: INCOHERENT, RESP_COHERENT: COHERENT}
 
 SETUP_ASK_SRC_LANG = """Сейчас я задам вам несколько вопросов для знакомства.
 Для начала, пожалуйста, перечислите через запятую языки, С КОТОРЫХ вы готовы переводить.
