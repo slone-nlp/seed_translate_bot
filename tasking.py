@@ -20,6 +20,8 @@ def do_assign_input(
             task.completions += 1
             # TODO: check the conditions whether the task is completed, and update ts status
             db.save_task(task)
+            db.add_user_task_link(user_id=user.user_id, task=task)
+
             user.curr_sent_id = None
             user.curr_task_id = None
             user.state_id = States.SUGGEST_ONE_MORE_TASK

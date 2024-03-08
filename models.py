@@ -149,6 +149,7 @@ class Database:
         self.trans_inputs: Collection = mongo_db.get_collection("trans_inputs")
         self.trans_results: Collection = mongo_db.get_collection("trans_results")
         self.trans_labels: Collection = mongo_db.get_collection("trans_labels")
+        self.user_task_map: Collection = mongo_db.get_collection("user_task_map")
 
     @classmethod
     def setup(cls, mongo_url: str) -> "Database":
@@ -170,10 +171,22 @@ class Database:
             for task in self.trans_tasks.find({"completed": False, "locked": False})
         }
         if len(unfinished_task_ids) == 0:
+            # TODO: check if there are any tasks that are locked by mistake, and reconsider
             logger.info(f"Did not find any unfinished tasks!")
             return
 
-        # TODO!: prioritize the tasks that the user has not contributed yet
+        # prioritize the tasks that the user has not contributed yet
+        user_tasks = {
+            obj["task_id"]
+            for obj in self.user_task_map.find({"user_id": user.user_id})
+        }
+        tasks_untouched_by_user = {
+            (task_id, completion)
+            for task_id, completion in unfinished_task_ids
+            if task_id not in user_tasks
+        }
+        if len(tasks_untouched_by_user) > 0:
+            unfinished_task_ids = tasks_untouched_by_user
 
         # prioritize the tasks with the lowest number of completions
         min_completion = min(
@@ -190,6 +203,10 @@ class Database:
             f"Chose the task {task_id} among {len(unfinished_task_ids)} options."
         )
         return self.get_task(task_id)
+
+    def add_user_task_link(self, user_id: int, task: TransTask):
+        obj = {"user_id": user_id, "task_id": task.task_id, "project_id": task.project_id}
+        self.user_task_map.update_one(obj, obj, upsert=True)
 
     def get_project(self, project_id: int) -> Optional[TransProject]:
         obj = self.trans_projects.find_one({"project_id": project_id})
