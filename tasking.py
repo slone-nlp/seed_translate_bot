@@ -35,7 +35,9 @@ def do_assign_input(
 
         # depending on the task, either choose the candidates to score or ask for a new translation
         candidates = db.get_translations_for_input(inp)
-        other_candidates = [candidate for candidate in candidates if candidate.user_id != user.user_id]
+        # filter out the translations by the user or the translations that user has already scored
+        already_scored_candidates = db.get_translations_ids_scored_by_user(user_id=user.user_id, task_id=task.task_id)
+        other_candidates = [candidate for candidate in candidates if candidate.user_id != user.user_id and candidate.translation_id not in already_scored_candidates]
         if len(other_candidates) > 0:
             # Case 1: ask to score a candidate!
             candidate = other_candidates[0]

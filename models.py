@@ -1,7 +1,7 @@
 import logging
 import random
 import time
-from typing import Dict, List, Optional
+from typing import Dict, List, Optional, Set
 
 import mongomock
 import telebot
@@ -206,7 +206,7 @@ class Database:
 
     def add_user_task_link(self, user_id: int, task: TransTask):
         obj = {"user_id": user_id, "task_id": task.task_id, "project_id": task.project_id}
-        self.user_task_map.update_one(obj, obj, upsert=True)
+        self.user_task_map.update_one(obj, {"$set": obj}, upsert=True)
 
     def get_project(self, project_id: int) -> Optional[TransProject]:
         obj = self.trans_projects.find_one({"project_id": project_id})
@@ -407,3 +407,7 @@ class Database:
                 update={"$set": label.model_dump()},
                 upsert=True,
             )
+
+    def get_translations_ids_scored_by_user(self, user_id: int, task_id: int) -> Set[int]:
+        found = self.trans_labels.find({"user_id": user_id, "task_id": task_id})
+        return {item["translation_id"] for item in found}
