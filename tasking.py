@@ -14,11 +14,14 @@ def do_assign_input(
             task=task,
             prev_sent_id=user.curr_sent_id,
         )
-        # No input means that the task is completed
+        # No input means that the task is completed by the user
         if inp is None:
+            # check the conditions whether the task is fully completed, and update ts status
             task.locked = False
             task.completions += 1
-            # TODO: check the conditions whether the task is completed, and update ts status
+            unsolved_input = db.get_next_unsolved_input(task=task, prev_sent_id=None)
+            if unsolved_input is None:
+                task.completed = True
             db.save_task(task)
             db.add_user_task_link(user_id=user.user_id, task=task)
 
