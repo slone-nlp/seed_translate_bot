@@ -165,13 +165,13 @@ class Database:
         update_user_state(users_collection=self.mongo_users, state=user)
 
     def get_new_task(self, user: UserState) -> Optional[TransTask]:
-        # TODO: in the future, filter by the current project and its languages
+        # TODO(future): in the future, filter by the current project and its languages
         unfinished_task_ids = {
             (task["task_id"], task["completions"])
             for task in self.trans_tasks.find({"completed": False, "locked": False})
         }
         if len(unfinished_task_ids) == 0:
-            # TODO: check if there are any tasks that are locked by mistake, and reconsider
+            # TODO(nice): check if there are any tasks that are locked by mistake, and reconsider
             logger.info(f"Did not find any unfinished tasks!")
             return
 
@@ -185,9 +185,39 @@ class Database:
             for task_id, completion in unfinished_task_ids
             if task_id not in user_tasks
         }
+
         if len(tasks_untouched_by_user) > 0:
             unfinished_task_ids = tasks_untouched_by_user
-            # TODO: if all the tasks are touched by the user, apply some more filtering!!!
+        else:
+            # If all the tasks are touched by the user, apply some more filtering.
+            # In principle, we should only keep the tasks where there are unsolved inputs with:
+            # - either pending translations that were neither produced nor labeled by the user
+            # - or without pending (or accepted) translations at all
+            unsolved_inputs = [TransInput.model_construct(obj) for obj in self.trans_inputs.find({"solved": False})]
+            pending_translations = [TransResult.model_construct(obj) for obj in self.trans_results.find({"status": TransStatus.UNCHECKED})]
+            user_labels = [TransLabel.model_construct(obj) for obj in self.trans_labels.find({"user_id": user.user_id})]
+
+            translation_ids_labeled_by_user = {lab.translation_id for lab in user_labels}
+            input_ids_to_label = {
+                t.input_id
+                for t in pending_translations
+                if t.user_id != user.user_id and t.translation_id not in translation_ids_labeled_by_user
+            }
+            input_ids_with_pending_translations = {t.input_id for t in pending_translations}
+            good_task_ids = {
+                inp.task_id
+                for inp in unsolved_inputs
+                if inp.input_id in input_ids_to_label or inp.input_id not in input_ids_with_pending_translations
+            }
+            unfinished_task_ids = {
+                (task_id, completion)
+                for task_id, completion in unfinished_task_ids
+                if task_id in good_task_ids
+            }
+
+        if len(unfinished_task_ids) == 0:
+            logger.info(f"Did not find any unfinished tasks!")
+            return
 
         # prioritize the tasks with the lowest number of completions
         min_completion = min(

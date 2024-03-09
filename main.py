@@ -186,7 +186,7 @@ def process_message(msg: telebot.types.Message):
         or (user.state_id == States.SUGGEST_TASK and text in {texts.RESP_SKIP_TASK})
         or (user.state_id == States.SUGGEST_ONE_MORE_TASK and text in {texts.RESP_YES})
     ):
-        # TODO: check if there is an unfinished current task, and deal with it properly
+        # TODO(nice): check if there is an unfinished current task, and deal with it properly
         task = DB.get_new_task(user=user)
         if task is None:
             send_text_to_user(
