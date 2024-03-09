@@ -74,9 +74,9 @@ def do_ask_to_translate(
 
     proj = db.get_project(project_id=inp.project_id)
     src_lang_phrase = get_lang_name(proj.src_code, code_form_id=LangCodeForm.src)
-    tgt_lang_phrase = get_lang_name(proj.src_code, code_form_id=LangCodeForm.tgt)
+    tgt_lang_phrase = get_lang_name(proj.tgt_code, code_form_id=LangCodeForm.tgt)
     response = (
-        f"Вот исходный текст: *{src_text}*\n\nПожалуйста, предложите его перевод {src_lang_phrase} {tgt_lang_phrase}:"
+        f"Вот исходный текст: *{src_text}*\n\nПожалуйста, предложите его перевод {src_lang_phrase} {tgt_lang_phrase}:\n(инструкции по переводу: oldi.org/guidelines)"
     )
 
     user.state_id = States.ASK_TRANSLATION
