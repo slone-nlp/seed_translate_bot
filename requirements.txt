@@ -2,3 +2,4 @@ pytelegrambotapi
 flask
 pymongo
 mongomock
+pydantic

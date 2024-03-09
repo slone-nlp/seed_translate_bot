@@ -1,5 +1,5 @@
 FROM python:3.7-slim-buster
-RUN pip install pytelegrambotapi flask pymongo mongomock
+RUN pip install pytelegrambotapi flask pymongo mongomock pydantic
 
 ADD . /app
 WORKDIR /app
