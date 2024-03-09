@@ -193,9 +193,9 @@ class Database:
             # In principle, we should only keep the tasks where there are unsolved inputs with:
             # - either pending translations that were neither produced nor labeled by the user
             # - or without pending (or accepted) translations at all
-            unsolved_inputs = [TransInput.model_construct(obj) for obj in self.trans_inputs.find({"solved": False})]
-            pending_translations = [TransResult.model_construct(obj) for obj in self.trans_results.find({"status": TransStatus.UNCHECKED})]
-            user_labels = [TransLabel.model_construct(obj) for obj in self.trans_labels.find({"user_id": user.user_id})]
+            unsolved_inputs = [TransInput.model_construct(**obj) for obj in self.trans_inputs.find({"solved": False})]
+            pending_translations = [TransResult.model_construct(**obj) for obj in self.trans_results.find({"status": TransStatus.UNCHECKED})]
+            user_labels = [TransLabel.model_construct(**obj) for obj in self.trans_labels.find({"user_id": user.user_id})]
 
             translation_ids_labeled_by_user = {lab.translation_id for lab in user_labels}
             input_ids_to_label = {

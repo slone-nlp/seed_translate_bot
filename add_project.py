@@ -24,6 +24,7 @@ def add_project(
     tgt_lang_code="rus",
     min_overlap=2,
     min_score=4,
+    limit=None,
 ):
     df = pd.read_csv(fn, sep="\t")
     print(df.isnull().mean())
@@ -38,6 +39,8 @@ def add_project(
     n_inputs, n_tasks, n_cands = 0, 0, 0
     groups = list(df.groupby("URL"))
     for url, task_df in tqdm(groups):
+        if limit is not None and n_tasks >= limit:
+            break
         task = DB.create_task(
             project=project,
             prompt=PROMPT_TEMPLATE.format(url),
@@ -61,6 +64,8 @@ def add_project(
             cand_texts.append(tgt_text)
             n_inputs += 1
             n_cands += bool(tgt_text)
+            if limit is not None and len(task_inputs) >= limit:
+                break
         DB.add_inputs(task_inputs)
         candidates = [
             DB.create_translation(user_id=models.NO_USER, trans_input=inp, text=tgt_text)
