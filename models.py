@@ -75,7 +75,7 @@ class TransProject(BaseModel):
     # how many approvals we want per translation
     overlap: int = 2
     # what is the minimal semantic score (XSTS) considered as approval
-    min_score: int = 5
+    min_score: int = 4
 
 
 class TransTask(BaseModel):
@@ -187,6 +187,7 @@ class Database:
         }
         if len(tasks_untouched_by_user) > 0:
             unfinished_task_ids = tasks_untouched_by_user
+            # TODO: if all the tasks are touched by the user, apply some more filtering!!!
 
         # prioritize the tasks with the lowest number of completions
         min_completion = min(

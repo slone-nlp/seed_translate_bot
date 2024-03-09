@@ -145,6 +145,8 @@ def process_message(msg: telebot.types.Message):
     user_id = msg.from_user.id
     username = msg.from_user.username or "Anonymous"
 
+    user: models.UserState = models.find_user(DB.mongo_users, user=msg.from_user)
+
     DB.mongo_messages.insert_one(
         {
             "user_id": user_id,
@@ -152,11 +154,10 @@ def process_message(msg: telebot.types.Message):
             "text": text,
             "timestamp": datetime.utcnow(),
             "message_id": msg.message_id,
+            "user_state_id": user.state_id,
         }
     )
     print("got message: '{}' from user {} ({})".format(text, user_id, username))
-
-    user: models.UserState = models.find_user(DB.mongo_users, user=msg.from_user)
 
     suggested_suggests = get_suggests_for_user_object(user)
     default_markup = render_markup(suggested_suggests)

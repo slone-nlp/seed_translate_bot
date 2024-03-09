@@ -9,11 +9,14 @@ def do_assign_input(
     user: UserState, db: Database, task: TransTask
 ) -> Tuple[str, List[str]]:
     # we do a loop, because we may need to skip some inputs
+    prev_sent_id = user.curr_sent_id
     for attempt in range(100):
+
         inp: Optional[TransInput] = db.get_next_unsolved_input(
             task=task,
-            prev_sent_id=user.curr_sent_id,
+            prev_sent_id=prev_sent_id,
         )
+        print( "attempt", attempt, "trying input:", inp)
         # No input means that the task is completed by the user
         if inp is None:
             # check the conditions whether the task is fully completed, and update ts status
@@ -47,6 +50,7 @@ def do_assign_input(
             # Case 2: nothing to score; start directly by asking for a translation
             if db.user_has_unscored_translations_for_input(user_id=user.user_id, input_id=inp.input_id):
                 # if there is a translation by the current user, don't ask for a new one, and skip to the next input
+                prev_sent_id = inp.input_id
                 continue
             return do_ask_to_translate(user=user, db=db, inp=inp)
     return f"Произошло что-то странное. Пожалуйста, напишите @cointegrated, что по задаче {task.task_id} вам не смогли выдать текст.", []
