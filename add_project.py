@@ -20,11 +20,20 @@ def add_project(
     fn="data/nllb-seed-eng-rus-scored-v1.tsv",
     project_name="NLLB-Seed-eng-rus",
     min_initial_translation_score=3.0,
+    src_lang_code="eng",
+    tgt_lang_code="rus",
+    min_overlap=2,
+    min_score=4,
 ):
     df = pd.read_csv(fn, sep="\t")
     print(df.isnull().mean())
 
     project = DB.create_project(title=project_name)
+    project.src_code = src_lang_code
+    project.tgt_code = tgt_lang_code
+    project.overlap = min_overlap
+    project.min_score = min_score
+    DB.save_project(project)
 
     n_inputs, n_tasks, n_cands = 0, 0, 0
     groups = list(df.groupby("URL"))

@@ -1,6 +1,7 @@
 from typing import List, Optional, Tuple
 
 import texts
+from language_coding import get_lang_name, LangCodeForm
 from models import Database, TransInput, TransResult, TransTask, UserState, TransLabel, TransStatus
 from states import States
 
@@ -70,10 +71,14 @@ def do_ask_to_translate(
     user: UserState, db: Database, inp: TransInput,
 ) -> Tuple[str, List[str]]:
     src_text = inp.source
+
+    proj = db.get_project(project_id=inp.project_id)
+    src_lang_phrase = get_lang_name(proj.src_code, code_form_id=LangCodeForm.src)
+    tgt_lang_phrase = get_lang_name(proj.src_code, code_form_id=LangCodeForm.tgt)
     response = (
-        f"Вот исходный текст: *{src_text}*\n\nПожалуйста, предложите его перевод:"
+        f"Вот исходный текст: *{src_text}*\n\nПожалуйста, предложите его перевод {src_lang_phrase} {tgt_lang_phrase}:"
     )
-    # TODO: maybe indicate the target language.
+
     user.state_id = States.ASK_TRANSLATION
     user.curr_proj_id = inp.project_id
     user.curr_task_id = inp.task_id
