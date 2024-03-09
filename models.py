@@ -134,6 +134,11 @@ class TransLabel(BaseModel):
     def is_coherent(self) -> bool:
         return self.coherence_score == COHERENT
 
+    def is_positive(self, semantic_threshold) -> Optional[bool]:
+        if self.coherence_score is None or self.semantics_score is None:
+            return None
+        return self.is_coherent and self.semantics_score >= semantic_threshold
+
 
 class Database:
     def __init__(self, mongo_db):
@@ -442,3 +447,18 @@ class Database:
     def get_translations_ids_scored_by_user(self, user_id: int, task_id: int) -> Set[int]:
         found = self.trans_labels.find({"user_id": user_id, "task_id": task_id})
         return {item["translation_id"] for item in found}
+
+    def get_project_stats(self, project_id: int) -> Dict:
+        project = self.get_project(project_id=project_id)
+        all_inputs = [TransInput.model_construct(**obj) for obj in self.trans_inputs.find({"project_id": project_id})]
+        all_translations = [TransResult.model_construct(**obj) for obj in self.trans_results.find({"project_id": project_id})]
+        all_labels = [TransLabel.model_construct(**obj) for obj in self.trans_labels.find({"project_id": project_id})]
+        return dict(
+            n_inputs=len(all_inputs),
+            n_solved=sum(inp.solved for inp in all_inputs),
+            n_user_translations=sum(tr.user_id != NO_USER for tr in all_translations),
+            n_rejected_user_translations=sum(tr.user_id != NO_USER for tr in all_translations if tr.status == TransStatus.REJECTED),
+            n_labels=len(all_labels),
+            n_positive_labels=len([lab for lab in all_labels if lab.is_positive(project.min_score) is True]),
+            n_negative_labels=len([lab for lab in all_labels if lab.is_positive(project.min_score) is False]),
+        )

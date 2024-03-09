@@ -209,3 +209,11 @@ def do_ask_setup(user: UserState) -> Tuple[str, List[str]]:
         user.state_id = None
         response = texts.SETUP_READY
     return response, suggests
+
+
+def do_get_project_status(user: UserState, db: Database) -> Tuple[str, List[str]]:
+    project_id = user.curr_proj_id
+    if project_id is None:
+        project_id = 1  # TODO (future): propose to choose a project
+    stats_dict = db.get_project_stats(project_id=project_id)
+    return f"Текущая статистика по проекту #{project_id}: {stats_dict}", []

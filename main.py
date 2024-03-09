@@ -180,6 +180,11 @@ def process_message(msg: telebot.types.Message):
         DB.save_user(user)
         send_text_to_user(user.user_id, response, suggests=suggests, parse_mode="html")
 
+    elif text in {"/project_status"}:
+        response, suggests = tasking.do_get_project_status(user=user, db=DB)
+        DB.save_user(user)
+        send_text_to_user(user.user_id, response, suggests=suggests, parse_mode="html")
+
     # The main scenario
     elif (
         text in {"/task"}
