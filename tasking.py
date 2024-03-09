@@ -16,7 +16,7 @@ def do_assign_input(
             task=task,
             prev_sent_id=prev_sent_id,
         )
-        print( "attempt", attempt, "trying input:", inp)
+        print("attempt", attempt, "trying input:", inp)
         # No input means that the task is completed by the user
         if inp is None:
             # check the conditions whether the task is fully completed, and update ts status
@@ -38,20 +38,30 @@ def do_assign_input(
 
         # depending on the task, either choose the candidates to score or ask for a new translation
         candidates = db.get_translations_for_input(inp)
-        # filter out the translations by the user or the translations that user has already scored
+        # filter out the translations by the user and the translations that user has already scored
         already_scored_candidates = db.get_translations_ids_scored_by_user(user_id=user.user_id, task_id=task.task_id)
+        pending_candidates = [cand for cand in candidates if cand.status == TransStatus.UNCHECKED]
+
         other_candidates = [candidate for candidate in candidates if candidate.user_id != user.user_id and candidate.translation_id not in already_scored_candidates]
-        if len(other_candidates) > 0:
-            # Case 1: ask to score a candidate!
-            candidate = other_candidates[0]
+        other_pending = [candidate for candidate in other_candidates if candidate.status == TransStatus.UNCHECKED]
+        print(f"for input {inp.input_id} found {len(candidates)} translations: {len(already_scored_candidates)} scored by the user, and {len(other_candidates)} other candidates, including {len(other_pending)} unchecked.")
+
+        # Case 1: there are pending translations by other users, which the current user hasn't scored => asking to score
+        if len(other_pending) > 0:
+            candidate = other_pending[0]
+            print(f"scoring the candidate translation {candidate}")
             label = db.create_label(user_id=user.user_id, trans_result=candidate)
             return do_ask_coherence(user=user, db=db, inp=inp, res=candidate, label=label)
+
+        # Case 2: no translations to score, but there are some pending translatons => skip the input, until the pending translations are scored
+        elif len(pending_candidates):
+            prev_sent_id = inp.input_id
+            print(f"continuing to another input, because there are {len(pending_candidates)} unscored translations for the input {inp.input_id}")
+            continue
+
+        # Case 3: no translations to score, no pending translations by the user => asking for a new translation
         else:
-            # Case 2: nothing to score; start directly by asking for a translation
-            if db.user_has_unscored_translations_for_input(user_id=user.user_id, input_id=inp.input_id):
-                # if there is a translation by the current user, don't ask for a new one, and skip to the next input
-                prev_sent_id = inp.input_id
-                continue
+            print(f"asking to translate, because for user {user.user_id} and input {inp.input_id}, there are no unscored translations")
             return do_ask_to_translate(user=user, db=db, inp=inp)
     return f"Произошло что-то странное. Пожалуйста, напишите @cointegrated, что по задаче {task.task_id} вам не смогли выдать текст.", []
 
