@@ -63,7 +63,7 @@ def do_assign_input(
         else:
             print(f"asking to translate, because for user {user.user_id} and input {inp.input_id}, there are no unscored translations")
             return do_ask_to_translate(user=user, db=db, inp=inp)
-    return f"Произошло что-то странное. Пожалуйста, напишите @cointegrated, что по задаче {task.task_id} вам не смогли выдать текст.", []
+    return f"Произошло что-то странное. Пожалуйста, напишите @cointegrated, что по заданию {task.task_id} вам не смогли выдать текст.", []
 
 
 def do_ask_to_translate(

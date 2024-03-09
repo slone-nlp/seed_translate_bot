@@ -191,14 +191,14 @@ def process_message(msg: telebot.types.Message):
         if task is None:
             send_text_to_user(
                 user_id,
-                "Сейчас для вас нет никаких задач! Попробуйте зайти позже, проверить чужие переводы.",
+                "Сейчас для вас нет никаких заданий! Попробуйте зайти позже, проверить чужие переводы.",
                 reply_markup=default_markup,
             )
         else:
-            resp = f"Новая задача: #{task.task_id}."
+            resp = f"Новое задание: #{task.task_id}."
             if task.prompt:
                 resp += "\n" + task.prompt
-            resp += "\nГотовы к выполнению задачи?"
+            resp += "\nГотовы к выполнению задания?"
             suggests = [texts.RESP_TAKE_TASK, texts.RESP_SKIP_TASK]
             user.curr_proj_id = task.project_id
             user.curr_task_id = task.task_id
