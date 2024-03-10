@@ -85,11 +85,6 @@ ALL_CONTENT_TYPES = [
 ]
 
 
-def get_reply_markup_for_id(user_id):
-    user_object = DB.mongo_users.find_one({"user_id": user_id})
-    return render_markup_for_user_object(user_object)
-
-
 def get_suggests_for_user_object(user_object) -> List[str]:
     return []
 
@@ -171,8 +166,9 @@ def process_message(msg: telebot.types.Message):
         )
         print("class: no text detected")
     elif text in {"/start", "/help"}:
+        resp = "\n\n".join([texts.HELP, texts.MENU])
         send_text_to_user(
-            user_id, texts.HELP, reply_markup=default_markup, parse_mode="html"
+            user_id, resp, reply_markup=default_markup, parse_mode="html"
         )
 
     # The setup scenario (here we enter only!)
@@ -222,6 +218,11 @@ def process_message(msg: telebot.types.Message):
             user.state_id = States.SUGGEST_TASK
             DB.save_user(user)
             send_text_to_user(user_id, resp, suggests=suggests, parse_mode="html")
+
+    elif user.state_id == States.SUGGEST_ONE_MORE_TASK and text in {texts.RESP_NO}:
+        resp, suggests = tasking.do_not_assing_new_task(user=user, db=DB)
+        DB.save_user(user)
+        send_text_to_user(user_id, resp, suggests=suggests)
 
     elif user.state_id == States.SUGGEST_TASK and text in {texts.RESP_TAKE_TASK}:
         task = DB.get_task(user.curr_task_id)

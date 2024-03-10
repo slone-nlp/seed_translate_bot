@@ -104,6 +104,15 @@ def do_assign_input(
     )
 
 
+def do_not_assing_new_task(
+    user: UserState,
+    db: Database,
+) -> Tuple[str, List[str]]:
+    response = texts.DO_NOT_ASSIGN_TASK + "\n\n" + texts.MENU
+    suggests = []
+    return response, suggests
+
+
 def do_ask_to_translate(
     user: UserState,
     db: Database,
@@ -298,7 +307,7 @@ def do_tell_guidelines(user: UserState, db: Database) -> Tuple[str, List[str]]:
     suggests = []
     response = "\n\n".join(
         [
-            texts.GUIDEINES_HEADER,
+            texts.GUIDELINES_HEADER,
             texts.COHERENCE_GUIDELINE,
             texts.XSTS_GUIDELINE,
             texts.TRANSLATION_GUIDELINE,
