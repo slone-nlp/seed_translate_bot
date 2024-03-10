@@ -1,7 +1,7 @@
 import logging
 import random
 import time
-from typing import Dict, List, Optional, Set
+from typing import Dict, List, Optional, Set, Union
 
 import mongomock
 import telebot
@@ -163,6 +163,7 @@ class Database:
 
     @classmethod
     def setup(cls, mongo_url: Optional[str]) -> "Database":
+        mongo_client: Union[MongoClient, mongomock.MongoClient]
         if mongo_url is not None:
             mongo_client = MongoClient(mongo_url)
             mongo_db = mongo_client.get_default_database()
@@ -176,8 +177,9 @@ class Database:
         if obj:
             user = UserState.model_construct(**obj)
             return user
+        return None
 
-    def save_user(self, user: UserState):
+    def save_user(self, user: UserState) -> None:
         update_user_state(users_collection=self.mongo_users, state=user)
 
     def get_new_task(self, user: UserState) -> Optional[TransTask]:
@@ -189,7 +191,7 @@ class Database:
         if len(unfinished_task_ids) == 0:
             # TODO(nice): check if there are any tasks that are locked by mistake, and reconsider
             logger.info(f"Did not find any unfinished tasks!")
-            return
+            return None
 
         # prioritize the tasks that the user has not contributed yet
         user_tasks = {
@@ -247,7 +249,7 @@ class Database:
 
         if len(unfinished_task_ids) == 0:
             logger.info(f"Did not find any unfinished tasks!")
-            return
+            return None
 
         # prioritize the tasks with the lowest number of completions
         min_completion = min(
@@ -265,7 +267,7 @@ class Database:
         )
         return self.get_task(task_id)
 
-    def add_user_task_link(self, user_id: int, task: TransTask):
+    def add_user_task_link(self, user_id: int, task: TransTask) -> None:
         obj = {
             "user_id": user_id,
             "task_id": task.task_id,
@@ -278,12 +280,14 @@ class Database:
         if obj:
             proj = TransProject.model_construct(**obj)
             return proj
+        return None
 
     def get_task(self, task_id: int) -> Optional[TransTask]:
         obj = self.trans_tasks.find_one({"task_id": task_id})
         if obj:
             task = TransTask.model_construct(**obj)
             return task
+        return None
 
     def get_next_unsolved_input(
         self,
@@ -308,6 +312,7 @@ class Database:
         )
         if prev_inputs:
             return prev_inputs[0]
+        return None
 
     def user_has_unscored_translations_for_input(
         self, user_id: int, input_id: int
@@ -339,7 +344,7 @@ class Database:
 
     def create_task(
         self, project: TransProject, prompt: Optional[str] = None, save: bool = True
-    ):
+    ) -> TransTask:
         ids = {t["task_id"] for t in self.trans_tasks.find({})}
         task_id = max(ids, default=0) + 1
         task = TransTask(
@@ -363,6 +368,7 @@ class Database:
         if obj:
             inp = TransInput.model_construct(**obj)
             return inp
+        return None
 
     def create_input(
         self,
@@ -370,7 +376,7 @@ class Database:
         task: TransTask,
         source: str,
         save: bool = False,
-    ):
+    ) -> TransInput:
         inp = TransInput(
             project_id=project.project_id,
             task_id=task.task_id,
@@ -405,6 +411,7 @@ class Database:
         if obj:
             res = TransResult.model_construct(**obj)
             return res
+        return None
 
     def get_translations_for_input(
         self, inp: TransInput, status: Optional[int] = None
@@ -492,6 +499,8 @@ class Database:
 
     def get_project_stats(self, project_id: int) -> Dict:
         project = self.get_project(project_id=project_id)
+        if project is None:
+            return {"error": f"project {project_id} not found!"}
         all_inputs = [
             TransInput.model_construct(**obj)
             for obj in self.trans_inputs.find({"project_id": project_id})
