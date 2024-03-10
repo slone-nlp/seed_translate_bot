@@ -162,7 +162,7 @@ class Database:
         self.user_task_map: Collection = mongo_db.get_collection("user_task_map")
 
     @classmethod
-    def setup(cls, mongo_url: str) -> "Database":
+    def setup(cls, mongo_url: Optional[str]) -> "Database":
         if mongo_url is not None:
             mongo_client = MongoClient(mongo_url)
             mongo_db = mongo_client.get_default_database()
@@ -170,6 +170,12 @@ class Database:
             mongo_client = mongomock.MongoClient()
             mongo_db = mongo_client.db
         return Database(mongo_db=mongo_db)
+
+    def get_user(self, user_id: int) -> Optional[UserState]:
+        obj = self.mongo_users.find_one({"user_id": user_id})
+        if obj:
+            user = UserState.model_construct(**obj)
+            return user
 
     def save_user(self, user: UserState):
         update_user_state(users_collection=self.mongo_users, state=user)
