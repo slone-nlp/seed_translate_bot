@@ -183,8 +183,15 @@ def do_save_translation_and_ask_for_next(
         trans_input=inp,
         text=user_text,
     )
-    # TODO (nice): if a translation text is a duplicate, assign it a special status
+    # if a translation text is a duplicate, assign it a special status
+    other_translations = db.get_translations_for_input(inp=inp)
+    for other in other_translations:
+        if other.text == translation.text and other.translation_id != translation.translation_id:
+            translation.status = TransStatus.DUPLICATE
+            # TODO (future) maybe, tell the user that the translation is a duplicate and ask for a different one!
+
     db.save_translation(translation)
+
     # do NOT reset current sent id, because it will be used to determine the next input!
     user.curr_result_id = None
     user.curr_label_id = None

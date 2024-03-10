@@ -102,6 +102,7 @@ class TransStatus:
     UNCHECKED = 0
     ACCEPTED = 1
     REJECTED = 2
+    DUPLICATE = 3
 
 
 class TransResult(BaseModel):
