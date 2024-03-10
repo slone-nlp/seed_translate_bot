@@ -3,3 +3,4 @@ flask
 pymongo
 mongomock
 pydantic
+sentry-sdk
