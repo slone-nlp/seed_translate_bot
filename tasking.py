@@ -81,7 +81,7 @@ def do_ask_to_translate(
     src_lang_phrase = get_lang_name(proj.src_code, code_form_id=LangCodeForm.src)
     tgt_lang_phrase = get_lang_name(proj.tgt_code, code_form_id=LangCodeForm.tgt)
     response = (
-        f"Вот исходный текст: *{src_text}*\n\nПожалуйста, предложите его перевод {src_lang_phrase} {tgt_lang_phrase}:"
+        f"Вот исходный текст: <b>{src_text}</b>\n\nПожалуйста, предложите его перевод {src_lang_phrase} {tgt_lang_phrase}:"
     )
     if user.n_translations < N_IMPRESSIONS_FOR_INSTRUCTIONS or random.random() < P_RANDOM_INSTRUCTION:
         response = f"{response}\n\n{texts.TRANSLATION_GUIDELINE}"
@@ -99,7 +99,7 @@ def do_ask_coherence(
     user: UserState, db: Database, inp: TransInput, res: TransResult, label: TransLabel,
 ) -> Tuple[str, List[str]]:
     user.state_id = States.ASK_COHERENCE
-    response = f"Вот исходный текст: *{inp.source}*\n\nВот перевод: *{res.translation}*\n\n{texts.COHERENCE_PROMPT}"
+    response = f"Вот исходный текст: <b>{inp.source}</b>\n\nВот перевод: <b>{res.translation}</b>\n\n{texts.COHERENCE_PROMPT}"
     if user.n_labels < N_IMPRESSIONS_FOR_INSTRUCTIONS or random.random() < P_RANDOM_INSTRUCTION:
         response = f"{response}\n\n{texts.COHERENCE_GUIDELINE}"
     suggests = texts.COHERENCE_RESPONSES
@@ -117,7 +117,7 @@ def do_ask_xsts(
     user: UserState, db: Database, inp: TransInput, res: TransResult, label: TransLabel,
 ) -> Tuple[str, List[str]]:
     user.state_id = States.ASK_XSTS
-    response = f"Вот исходный текст: *{inp.source}*\n\nВот перевод: *{res.translation}*\n\n{texts.XSTS_PROMPT}"
+    response = f"Вот исходный текст: <b>{inp.source}</b>\n\nВот перевод: <b>{res.translation}</b>\n\n{texts.XSTS_PROMPT}"
     if user.n_labels < N_IMPRESSIONS_FOR_INSTRUCTIONS or random.random() < P_RANDOM_INSTRUCTION:
         response = f"{response}\n\n{texts.XSTS_GUIDELINE}"
     suggests = texts.XSTS_RESPONSES
@@ -248,4 +248,34 @@ def do_tell_guidelines(user: UserState, db: Database) -> Tuple[str, List[str]]:
         texts.XSTS_GUIDELINE,
         texts.TRANSLATION_GUIDELINE,
     ])
+    return response, suggests
+
+
+def do_resume_task(user: UserState, db: Database) -> Tuple[str, List[str]]:
+    # repeat the last message in the current task, without changing the state
+    suggests = []
+
+    task = db.get_task(user.curr_task_id)
+    inp = db.get_input(user.curr_sent_id)
+    res = db.get_translation(user.curr_result_id)
+    label = db.get_label(user.curr_label_id)
+
+    if user.state_id == States.ASK_COHERENCE and inp and res and label:
+        response, suggests = do_ask_coherence(
+            user=user, db=db, inp=inp, res=res, label=label,
+        )
+    elif user.state_id == States.ASK_XSTS and inp and res and label:
+        response, suggests = do_ask_xsts(
+            user=user, db=db, inp=inp, res=res, label=label,
+        )
+    elif user.state_id == States.ASK_TRANSLATION and inp:
+        response, suggests = do_ask_to_translate(
+            user=user, db=db, inp=inp,
+        )
+    elif task:
+        response, suggests = do_assign_input(
+            user=user, db=db, task=task,
+        )
+    else:
+        response = texts.NO_CURRENT_TASK + "\n" + texts.NAVIGATION
     return response, suggests

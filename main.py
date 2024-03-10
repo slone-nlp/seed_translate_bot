@@ -107,7 +107,7 @@ def render_markup_for_user_object(user_object):
 
 
 def send_text_to_user(
-    user_id, text, reply_markup=None, suggests=None, parse_mode="markdown"
+    user_id, text, reply_markup=None, suggests=None, parse_mode="html"
 ):
     if reply_markup is None:
         reply_markup = render_markup(suggests or [])
@@ -115,6 +115,7 @@ def send_text_to_user(
     result = bot.send_message(
         user_id, text, reply_markup=reply_markup, parse_mode=parse_mode
     )
+    # For some reason, markdown is malformed with urls
     DB.mongo_messages.insert_one(
         {
             "user_id": user_id,
@@ -190,6 +191,12 @@ def process_message(msg: telebot.types.Message):
         DB.save_user(user)
         send_text_to_user(user.user_id, response, suggests=suggests, parse_mode="html")
 
+    elif text in {"/resume"}:
+       # repeat the last message in the current task, without changing the state
+       response, suggests = tasking.do_resume_task(user=user, db=DB)
+       DB.save_user(user)
+       send_text_to_user(user.user_id, response, suggests=suggests, parse_mode="html")
+
     # The main scenario
     elif (
         text in {"/task"}
@@ -216,7 +223,7 @@ def process_message(msg: telebot.types.Message):
             DB.save_user(user)
             send_text_to_user(
                 user_id, resp, suggests=suggests, parse_mode="html"
-            )  # For some reason, markdown is malformed with urls
+            )
 
     elif user.state_id == States.SUGGEST_TASK and text in {texts.RESP_TAKE_TASK}:
         task = DB.get_task(user.curr_task_id)
