@@ -1,9 +1,14 @@
+import random
 from typing import List, Optional, Tuple
 
 import texts
 from language_coding import get_lang_name, LangCodeForm
 from models import Database, TransInput, TransResult, TransTask, UserState, TransLabel, TransStatus
 from states import States
+
+
+N_IMPRESSIONS_FOR_INSTRUCTIONS = 3
+P_RANDOM_INSTRUCTION = 0.05
 
 
 def do_assign_input(
@@ -76,8 +81,10 @@ def do_ask_to_translate(
     src_lang_phrase = get_lang_name(proj.src_code, code_form_id=LangCodeForm.src)
     tgt_lang_phrase = get_lang_name(proj.tgt_code, code_form_id=LangCodeForm.tgt)
     response = (
-        f"Вот исходный текст: *{src_text}*\n\nПожалуйста, предложите его перевод {src_lang_phrase} {tgt_lang_phrase}:\n(инструкции по переводу: oldi.org/guidelines)"
+        f"Вот исходный текст: *{src_text}*\n\nПожалуйста, предложите его перевод {src_lang_phrase} {tgt_lang_phrase}:"
     )
+    if user.n_translations < N_IMPRESSIONS_FOR_INSTRUCTIONS or random.random() < P_RANDOM_INSTRUCTION:
+        response = f"{response}\n\n{texts.TRANSLATION_GUIDELINE}"
 
     user.state_id = States.ASK_TRANSLATION
     user.curr_proj_id = inp.project_id
@@ -93,6 +100,8 @@ def do_ask_coherence(
 ) -> Tuple[str, List[str]]:
     user.state_id = States.ASK_COHERENCE
     response = f"Вот исходный текст: *{inp.source}*\n\nВот перевод: *{res.translation}*\n\n{texts.COHERENCE_PROMPT}"
+    if user.n_labels < N_IMPRESSIONS_FOR_INSTRUCTIONS or random.random() < P_RANDOM_INSTRUCTION:
+        response = f"{response}\n\n{texts.COHERENCE_GUIDELINE}"
     suggests = texts.COHERENCE_RESPONSES
 
     db.save_label(label)
@@ -109,6 +118,8 @@ def do_ask_xsts(
 ) -> Tuple[str, List[str]]:
     user.state_id = States.ASK_XSTS
     response = f"Вот исходный текст: *{inp.source}*\n\nВот перевод: *{res.translation}*\n\n{texts.XSTS_PROMPT}"
+    if user.n_labels < N_IMPRESSIONS_FOR_INSTRUCTIONS or random.random() < P_RANDOM_INSTRUCTION:
+        response = f"{response}\n\n{texts.XSTS_GUIDELINE}"
     suggests = texts.XSTS_RESPONSES
 
     db.save_label(label)
@@ -144,6 +155,8 @@ def do_save_xsts_and_ask_for_translation_or_assign_next_input(
     label = db.get_label(label_id=user.curr_label_id)
     label.semantics_score = score_value
     db.save_label(label)
+
+    user.n_labels += 1
 
     # approve or reject the translation based on the label
     project = db.get_project(project_id=user.curr_proj_id)
@@ -186,7 +199,7 @@ def do_save_translation_and_ask_for_next(
     # if a translation text is a duplicate, assign it a special status
     other_translations = db.get_translations_for_input(inp=inp)
     for other in other_translations:
-        if other.text == translation.text and other.translation_id != translation.translation_id:
+        if other.translation == translation.translation and other.translation_id != translation.translation_id:
             translation.status = TransStatus.DUPLICATE
             # TODO (future) maybe, tell the user that the translation is a duplicate and ask for a different one!
 
@@ -195,6 +208,7 @@ def do_save_translation_and_ask_for_next(
     # do NOT reset current sent id, because it will be used to determine the next input!
     user.curr_result_id = None
     user.curr_label_id = None
+    user.n_translations += 1
 
     # Ask for a new translation in the same task
     task = db.get_task(task_id=translation.task_id)
@@ -224,3 +238,14 @@ def do_get_project_status(user: UserState, db: Database) -> Tuple[str, List[str]
         project_id = 1  # TODO (future): propose to choose a project
     stats_dict = db.get_project_stats(project_id=project_id)
     return f"Текущая статистика по проекту #{project_id}: {stats_dict}", []
+
+
+def do_tell_guidelines(user: UserState, db: Database) -> Tuple[str, List[str]]:
+    suggests = []
+    response = "\n\n".join([
+        texts.GUIDEINES_HEADER,
+        texts.COHERENCE_GUIDELINE,
+        texts.XSTS_GUIDELINE,
+        texts.TRANSLATION_GUIDELINE,
+    ])
+    return response, suggests

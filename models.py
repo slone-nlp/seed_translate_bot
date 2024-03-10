@@ -39,6 +39,10 @@ class UserState(BaseModel):
     # Dialogue state
     state_id: Optional[str] = None
 
+    # Statistics
+    n_labels: int = 0
+    n_translations: int = 0
+
 
 def update_user_state(users_collection: Collection, state: UserState):
     dumped = state.model_dump()

@@ -185,6 +185,11 @@ def process_message(msg: telebot.types.Message):
         DB.save_user(user)
         send_text_to_user(user.user_id, response, suggests=suggests, parse_mode="html")
 
+    elif text in {"/guidelines"}:
+        response, suggests = tasking.do_tell_guidelines(user=user, db=DB)
+        DB.save_user(user)
+        send_text_to_user(user.user_id, response, suggests=suggests, parse_mode="html")
+
     # The main scenario
     elif (
         text in {"/task"}
