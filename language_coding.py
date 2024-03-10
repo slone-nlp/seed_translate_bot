@@ -1,4 +1,3 @@
-
 class LangCodeForm:
     base = 0
     src = 1

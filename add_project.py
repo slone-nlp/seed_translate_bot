@@ -9,9 +9,11 @@ MONGO_URL = os.environ.get("MONGODB_URI")
 
 DB = models.Database.setup(MONGO_URL)
 
-PROMPT_TEMPLATE = "Чтобы приступить к переводу, рекомендуется прочитать статью в Википедии, "\
-                  "откуда были взяты предложения, чтобы лучше понять контекст: {}." \
-                  "\nЕсли у статьи есть русская версия, прочитайте её тоже, чтобы понять общепринятый перевод основных сущностей и понятий."
+PROMPT_TEMPLATE = (
+    "Чтобы приступить к переводу, рекомендуется прочитать статью в Википедии, "
+    "откуда были взяты предложения, чтобы лучше понять контекст: {}."
+    "\nЕсли у статьи есть русская версия, прочитайте её тоже, чтобы понять общепринятый перевод основных сущностей и понятий."
+)
 
 EMPTY_TEXTS = {"-"}
 
@@ -49,7 +51,11 @@ def add_project(
         task_inputs = []
         cand_texts = []
         for i, row in task_df.iterrows():
-            src_text, tgt_text, tgt_score = row["eng_Latn"], row["candidate"], row["candidate_score"]
+            src_text, tgt_text, tgt_score = (
+                row["eng_Latn"],
+                row["candidate"],
+                row["candidate_score"],
+            )
             if not tgt_text or tgt_text in EMPTY_TEXTS:
                 tgt_text = None
             if tgt_score is None or tgt_score < min_initial_translation_score:
@@ -68,14 +74,18 @@ def add_project(
                 break
         DB.add_inputs(task_inputs)
         candidates = [
-            DB.create_translation(user_id=models.NO_USER, trans_input=inp, text=tgt_text)
+            DB.create_translation(
+                user_id=models.NO_USER, trans_input=inp, text=tgt_text
+            )
             for tgt_text, inp in zip(cand_texts, task_inputs)
             if tgt_text
         ]
         if len(candidates) > 0:
             DB.add_translations(candidates)
 
-    print(f"Created {n_tasks} tasks with {n_inputs} inputs and {n_cands} candidate translations!")
+    print(
+        f"Created {n_tasks} tasks with {n_inputs} inputs and {n_cands} candidate translations!"
+    )
 
 
 if __name__ == "__main__":

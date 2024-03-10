@@ -187,8 +187,7 @@ class Database:
 
         # prioritize the tasks that the user has not contributed yet
         user_tasks = {
-            obj["task_id"]
-            for obj in self.user_task_map.find({"user_id": user.user_id})
+            obj["task_id"] for obj in self.user_task_map.find({"user_id": user.user_id})
         }
         tasks_untouched_by_user = {
             (task_id, completion)
@@ -203,21 +202,36 @@ class Database:
             # In principle, we should only keep the tasks where there are unsolved inputs with:
             # - either pending translations that were neither produced nor labeled by the user
             # - or without pending (or accepted) translations at all
-            unsolved_inputs = [TransInput.model_construct(**obj) for obj in self.trans_inputs.find({"solved": False})]
-            pending_translations = [TransResult.model_construct(**obj) for obj in self.trans_results.find({"status": TransStatus.UNCHECKED})]
-            user_labels = [TransLabel.model_construct(**obj) for obj in self.trans_labels.find({"user_id": user.user_id})]
+            unsolved_inputs = [
+                TransInput.model_construct(**obj)
+                for obj in self.trans_inputs.find({"solved": False})
+            ]
+            pending_translations = [
+                TransResult.model_construct(**obj)
+                for obj in self.trans_results.find({"status": TransStatus.UNCHECKED})
+            ]
+            user_labels = [
+                TransLabel.model_construct(**obj)
+                for obj in self.trans_labels.find({"user_id": user.user_id})
+            ]
 
-            translation_ids_labeled_by_user = {lab.translation_id for lab in user_labels}
+            translation_ids_labeled_by_user = {
+                lab.translation_id for lab in user_labels
+            }
             input_ids_to_label = {
                 t.input_id
                 for t in pending_translations
-                if t.user_id != user.user_id and t.translation_id not in translation_ids_labeled_by_user
+                if t.user_id != user.user_id
+                and t.translation_id not in translation_ids_labeled_by_user
             }
-            input_ids_with_pending_translations = {t.input_id for t in pending_translations}
+            input_ids_with_pending_translations = {
+                t.input_id for t in pending_translations
+            }
             good_task_ids = {
                 inp.task_id
                 for inp in unsolved_inputs
-                if inp.input_id in input_ids_to_label or inp.input_id not in input_ids_with_pending_translations
+                if inp.input_id in input_ids_to_label
+                or inp.input_id not in input_ids_with_pending_translations
             }
             unfinished_task_ids = {
                 (task_id, completion)
@@ -246,7 +260,11 @@ class Database:
         return self.get_task(task_id)
 
     def add_user_task_link(self, user_id: int, task: TransTask):
-        obj = {"user_id": user_id, "task_id": task.task_id, "project_id": task.project_id}
+        obj = {
+            "user_id": user_id,
+            "task_id": task.task_id,
+            "project_id": task.project_id,
+        }
         self.user_task_map.update_one(obj, {"$set": obj}, upsert=True)
 
     def get_project(self, project_id: int) -> Optional[TransProject]:
@@ -262,7 +280,9 @@ class Database:
             return task
 
     def get_next_unsolved_input(
-        self, task: TransTask, prev_sent_id: Optional[int] = None,
+        self,
+        task: TransTask,
+        prev_sent_id: Optional[int] = None,
     ) -> Optional[TransInput]:
         """
         For the given task, get the next input.
@@ -272,7 +292,9 @@ class Database:
             prev_sent_id = -1
         all_inputs = [
             TransInput.model_construct(**obj)
-            for obj in self.trans_inputs.find({"task_id": task.task_id, "solved": False})
+            for obj in self.trans_inputs.find(
+                {"task_id": task.task_id, "solved": False}
+            )
         ]
         prev_inputs = sorted(
             [inp for inp in all_inputs if inp.input_id > prev_sent_id],
@@ -281,8 +303,12 @@ class Database:
         if prev_inputs:
             return prev_inputs[0]
 
-    def user_has_unscored_translations_for_input(self, user_id: int, input_id: int) -> bool:
-        found = self.trans_results.find_one({"user_id": user_id, "input_id": input_id, "status": TransStatus.UNCHECKED})
+    def user_has_unscored_translations_for_input(
+        self, user_id: int, input_id: int
+    ) -> bool:
+        found = self.trans_results.find_one(
+            {"user_id": user_id, "input_id": input_id, "status": TransStatus.UNCHECKED}
+        )
         if found:
             return True
         return False
@@ -374,7 +400,9 @@ class Database:
             res = TransResult.model_construct(**obj)
             return res
 
-    def get_translations_for_input(self, inp: TransInput, status: Optional[int] = None) -> List[TransResult]:
+    def get_translations_for_input(
+        self, inp: TransInput, status: Optional[int] = None
+    ) -> List[TransResult]:
         fltr = {
             "input_id": inp.input_id,
             "task_id": inp.task_id,
@@ -383,12 +411,13 @@ class Database:
         if status is not None:
             fltr["status"] = status
         results = [
-            TransResult.model_construct(**obj)
-            for obj in self.trans_results.find(fltr)
+            TransResult.model_construct(**obj) for obj in self.trans_results.find(fltr)
         ]
         return results
 
-    def create_translation(self, user_id: int, trans_input: TransInput, text: Optional[str] = None) -> TransResult:
+    def create_translation(
+        self, user_id: int, trans_input: TransInput, text: Optional[str] = None
+    ) -> TransResult:
         result = TransResult(
             project_id=trans_input.project_id,
             task_id=trans_input.task_id,
@@ -449,21 +478,48 @@ class Database:
                 upsert=True,
             )
 
-    def get_translations_ids_scored_by_user(self, user_id: int, task_id: int) -> Set[int]:
+    def get_translations_ids_scored_by_user(
+        self, user_id: int, task_id: int
+    ) -> Set[int]:
         found = self.trans_labels.find({"user_id": user_id, "task_id": task_id})
         return {item["translation_id"] for item in found}
 
     def get_project_stats(self, project_id: int) -> Dict:
         project = self.get_project(project_id=project_id)
-        all_inputs = [TransInput.model_construct(**obj) for obj in self.trans_inputs.find({"project_id": project_id})]
-        all_translations = [TransResult.model_construct(**obj) for obj in self.trans_results.find({"project_id": project_id})]
-        all_labels = [TransLabel.model_construct(**obj) for obj in self.trans_labels.find({"project_id": project_id})]
+        all_inputs = [
+            TransInput.model_construct(**obj)
+            for obj in self.trans_inputs.find({"project_id": project_id})
+        ]
+        all_translations = [
+            TransResult.model_construct(**obj)
+            for obj in self.trans_results.find({"project_id": project_id})
+        ]
+        all_labels = [
+            TransLabel.model_construct(**obj)
+            for obj in self.trans_labels.find({"project_id": project_id})
+        ]
         return dict(
             n_inputs=len(all_inputs),
             n_solved=sum(inp.solved for inp in all_inputs),
             n_user_translations=sum(tr.user_id != NO_USER for tr in all_translations),
-            n_rejected_user_translations=sum(tr.user_id != NO_USER for tr in all_translations if tr.status == TransStatus.REJECTED),
+            n_rejected_user_translations=sum(
+                tr.user_id != NO_USER
+                for tr in all_translations
+                if tr.status == TransStatus.REJECTED
+            ),
             n_labels=len(all_labels),
-            n_positive_labels=len([lab for lab in all_labels if lab.is_positive(project.min_score) is True]),
-            n_negative_labels=len([lab for lab in all_labels if lab.is_positive(project.min_score) is False]),
+            n_positive_labels=len(
+                [
+                    lab
+                    for lab in all_labels
+                    if lab.is_positive(project.min_score) is True
+                ]
+            ),
+            n_negative_labels=len(
+                [
+                    lab
+                    for lab in all_labels
+                    if lab.is_positive(project.min_score) is False
+                ]
+            ),
         )

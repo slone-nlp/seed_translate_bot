@@ -192,10 +192,10 @@ def process_message(msg: telebot.types.Message):
         send_text_to_user(user.user_id, response, suggests=suggests, parse_mode="html")
 
     elif text in {"/resume"}:
-       # repeat the last message in the current task, without changing the state
-       response, suggests = tasking.do_resume_task(user=user, db=DB)
-       DB.save_user(user)
-       send_text_to_user(user.user_id, response, suggests=suggests, parse_mode="html")
+        # repeat the last message in the current task, without changing the state
+        response, suggests = tasking.do_resume_task(user=user, db=DB)
+        DB.save_user(user)
+        send_text_to_user(user.user_id, response, suggests=suggests, parse_mode="html")
 
     # The main scenario
     elif (
@@ -221,9 +221,7 @@ def process_message(msg: telebot.types.Message):
             user.curr_task_id = task.task_id
             user.state_id = States.SUGGEST_TASK
             DB.save_user(user)
-            send_text_to_user(
-                user_id, resp, suggests=suggests, parse_mode="html"
-            )
+            send_text_to_user(user_id, resp, suggests=suggests, parse_mode="html")
 
     elif user.state_id == States.SUGGEST_TASK and text in {texts.RESP_TAKE_TASK}:
         task = DB.get_task(user.curr_task_id)
@@ -249,8 +247,10 @@ def process_message(msg: telebot.types.Message):
         send_text_to_user(user_id, resp, suggests=suggests)
 
     elif user.state_id == States.ASK_XSTS and text in texts.XSTS_RESPONSES:
-        resp, suggests = tasking.do_save_xsts_and_ask_for_translation_or_assign_next_input(
-            user=user, db=DB, user_text=text
+        resp, suggests = (
+            tasking.do_save_xsts_and_ask_for_translation_or_assign_next_input(
+                user=user, db=DB, user_text=text
+            )
         )
         DB.save_user(user)
         send_text_to_user(user_id, resp, suggests=suggests)
