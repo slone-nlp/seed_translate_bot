@@ -10,8 +10,8 @@ logging.basicConfig(level=logging.DEBUG)
 
 logger = logging.getLogger(__name__)
 
-if os.getenv('SENTRY_DSN', None) is not None:
-    sentry_sdk.init(os.environ['SENTRY_DSN'])
+if os.getenv("SENTRY_DSN", None) is not None:
+    sentry_sdk.init(os.environ["SENTRY_DSN"])
 
 
 def main():

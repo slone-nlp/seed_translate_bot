@@ -80,9 +80,7 @@ def do_assign_input(
             candidate = other_pending[0]
             print(f"scoring the candidate translation {candidate}")
             label = db.create_label(user_id=user.user_id, trans_result=candidate)
-            return do_ask_coherence(
-                user=user, db=db, inp=inp, res=candidate, label=label
-            )
+            return do_ask_xsts(user=user, db=db, inp=inp, res=candidate, label=label)
 
         # Case 2: no translations to score, but there are some pending translatons => skip the input, until the pending translations are scored
         elif len(pending_candidates):
@@ -189,43 +187,62 @@ def do_ask_xsts(
     return response, suggests
 
 
-def do_save_coherence_and_ask_for_xsts(
+def do_save_coherence_and_continue(
     user: UserState, db: Database, user_text: str
 ) -> Tuple[str, List[str]]:
-    # Save the result
-    inp = db.get_input(input_id=user.curr_sent_id)
-    res = db.get_translation(result_id=user.curr_result_id)
     label = db.get_label(label_id=user.curr_label_id)
     label.coherence_score = texts.COHERENCE_RESPONSES_MAP.get(user_text)
     db.save_label(label)
-    # ask for a new translation
-    return do_ask_xsts(user=user, db=db, inp=inp, res=res, label=label)
+    return do_finalize_label_and_continue(user=user, db=db, label=label)
 
 
-def do_save_xsts_and_ask_for_translation_or_assign_next_input(
+def do_save_xsts_and_continue(
     user: UserState, db: Database, user_text: str
 ) -> Tuple[str, List[str]]:
-    # Save the result
     score_value = int(user_text)
-    inp = db.get_input(input_id=user.curr_sent_id)
-    task = db.get_task(task_id=inp.task_id)
-    res = db.get_translation(result_id=user.curr_result_id)
     label = db.get_label(label_id=user.curr_label_id)
     label.semantics_score = score_value
     db.save_label(label)
+    return do_finalize_label_and_continue(user=user, db=db, label=label)
+
+
+def do_finalize_label_and_continue(
+    user: UserState, db: Database, label: TransLabel
+) -> Tuple[str, List[str]]:
+    project = db.get_project(project_id=user.curr_proj_id)
+    task = db.get_task(task_id=user.curr_task_id)
+    inp = db.get_input(input_id=user.curr_sent_id)
+    res = db.get_translation(result_id=user.curr_result_id)
+    if project is None or task is None or inp is None or res is None:
+        return texts.FALLBACK, []
+
+    label_is_good = label.is_positive(semantic_threshold=project.min_score)
+
+    # Case 0: need one more label to get the verdict!
+    if label_is_good is None:
+        if label.semantics_score is None:
+            return do_ask_xsts(user=user, db=db, inp=inp, res=res, label=label)
+        elif label.coherence_score is None:
+            return do_ask_coherence(user=user, db=db, inp=inp, res=res, label=label)
+        else:  # this is not possible!
+            return texts.FALLBACK, []
 
     user.n_labels += 1
 
-    # approve or reject the translation based on the label
-    project = db.get_project(project_id=user.curr_proj_id)
-    if label.is_coherent and label.semantics_score >= project.min_score:
+    # Case 1: acceptance
+    if label_is_good is True:
         accepted = True
         res.n_approvals += 1
         if res.n_approvals >= project.overlap and res.status != TransStatus.REJECTED:
             res.status = TransStatus.ACCEPTED
-    else:
+
+    # Case 2: rejection
+    elif label_is_good is False:
         accepted = False
         res.status = TransStatus.REJECTED
+    else:  # this is not possible!
+        return texts.FALLBACK, []
+
     db.save_translation(res)
 
     # if the translation is accepted, the translation input is solved

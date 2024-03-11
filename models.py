@@ -140,6 +140,13 @@ class TransLabel(BaseModel):
         return self.coherence_score == COHERENT
 
     def is_positive(self, semantic_threshold) -> Optional[bool]:
+        if self.coherence_score == INCOHERENT:
+            return False
+        if (
+            self.semantics_score is not None
+            and self.semantics_score < semantic_threshold
+        ):
+            return False
         if self.coherence_score is None or self.semantics_score is None:
             return None
         return self.is_coherent and self.semantics_score >= semantic_threshold

@@ -197,17 +197,15 @@ class DialogueManager:
         elif (
             user.state_id == States.ASK_COHERENCE and text in texts.COHERENCE_RESPONSES
         ):
-            resp, suggests = tasking.do_save_coherence_and_ask_for_xsts(
+            resp, suggests = tasking.do_save_coherence_and_continue(
                 user=user, db=self.db, user_text=text
             )
             self.db.save_user(user)
             self.send_text_to_user(user_id, resp, suggests=suggests)
 
         elif user.state_id == States.ASK_XSTS and text in texts.XSTS_RESPONSES:
-            resp, suggests = (
-                tasking.do_save_xsts_and_ask_for_translation_or_assign_next_input(
-                    user=user, db=self.db, user_text=text
-                )
+            resp, suggests = tasking.do_save_xsts_and_continue(
+                user=user, db=self.db, user_text=text
             )
             self.db.save_user(user)
             self.send_text_to_user(user_id, resp, suggests=suggests)

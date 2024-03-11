@@ -80,11 +80,13 @@ def test_basic_scenario():
 
     # Rating the first candidate poorly and being asked to translate it
     manager.respond(get_test_message(texts.RESP_TAKE_TASK))
+    assert "First source text" in bot.last_message.text
     assert "какая-то ересь" in bot.last_message.text
-    assert "связн" in bot.last_message.text
-    manager.respond(get_test_message(texts.RESP_INCOHERENT))
+    # assert "связн" in bot.last_message.text
+    # manager.respond(get_test_message(texts.RESP_INCOHERENT))
     assert "от 1 до 5" in bot.last_message.text
     manager.respond(get_test_message("3"))
+    assert "First source text" in bot.last_message.text
     assert "предложите его перевод" in bot.last_message.text
 
     # Adding the second task before we finish the first one!
@@ -121,11 +123,11 @@ def test_basic_scenario():
     assert "second task prompt" in bot.last_message.text
     manager.respond(get_test_message(texts.RESP_TAKE_TASK))
     assert "Третий текст" in bot.last_message.text
+    assert "от 1 до 5" in bot.last_message.text
+    manager.respond(get_test_message("5"))
+    task2_id = db.get_user(TEST_USER_ID).curr_task_id
     assert "связн" in bot.last_message.text
     manager.respond(get_test_message(texts.RESP_COHERENT))
-    assert "от 1 до 5" in bot.last_message.text
-    task2_id = db.get_user(TEST_USER_ID).curr_task_id
-    manager.respond(get_test_message("5"))
     assert "Хотите взять ещё одно?" in bot.last_message.text
 
     # Checking that the second task is already complete
