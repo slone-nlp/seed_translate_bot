@@ -49,6 +49,8 @@ def do_assign_input(
                 texts.RESP_YES,
                 texts.RESP_NO,
             ]
+        if inp.input_id != user.curr_sent_id:
+            user.pbar_num = (user.pbar_num or 0) + 1
 
         # depending on the task, either choose the candidates to score or ask for a new translation
         candidates = db.get_translations_for_input(inp)
@@ -111,6 +113,10 @@ def do_not_assing_new_task(
     return response, suggests
 
 
+def pbar_text(user: UserState) -> str:
+    return f"({user.pbar_num}/{user.pbar_den})"
+
+
 def do_ask_to_translate(
     user: UserState,
     db: Database,
@@ -121,7 +127,7 @@ def do_ask_to_translate(
     proj = db.get_project(project_id=inp.project_id)
     src_lang_phrase = get_lang_name(proj.src_code, code_form_id=LangCodeForm.src)
     tgt_lang_phrase = get_lang_name(proj.tgt_code, code_form_id=LangCodeForm.tgt)
-    response = f"Вот исходный текст: <b>{src_text}</b>\n\nПожалуйста, предложите его перевод {src_lang_phrase} {tgt_lang_phrase}:"
+    response = f"{pbar_text(user)}\nВот исходный текст: <b>{src_text}</b>\n\nПожалуйста, предложите его перевод {src_lang_phrase} {tgt_lang_phrase}:"
     if (
         user.n_translations < N_IMPRESSIONS_FOR_INSTRUCTIONS
         or random.random() < P_RANDOM_INSTRUCTION
@@ -145,7 +151,7 @@ def do_ask_coherence(
     label: TransLabel,
 ) -> Tuple[str, List[str]]:
     user.state_id = States.ASK_COHERENCE
-    response = f"Вот исходный текст: <b>{inp.source}</b>\n\nВот перевод: <b>{res.translation}</b>\n\n{texts.COHERENCE_PROMPT}"
+    response = f"{pbar_text(user)}\nВот исходный текст: <b>{inp.source}</b>\n\nВот перевод: <b>{res.translation}</b>\n\n{texts.COHERENCE_PROMPT}"
     if (
         user.n_labels < N_IMPRESSIONS_FOR_INSTRUCTIONS
         or random.random() < P_RANDOM_INSTRUCTION
@@ -170,7 +176,7 @@ def do_ask_xsts(
     label: TransLabel,
 ) -> Tuple[str, List[str]]:
     user.state_id = States.ASK_XSTS
-    response = f"Вот исходный текст: <b>{inp.source}</b>\n\nВот перевод: <b>{res.translation}</b>\n\n{texts.XSTS_PROMPT}"
+    response = f"{pbar_text(user)}\nВот исходный текст: <b>{inp.source}</b>\n\nВот перевод: <b>{res.translation}</b>\n\n{texts.XSTS_PROMPT}"
     if (
         user.n_labels < N_IMPRESSIONS_FOR_INSTRUCTIONS
         or random.random() < P_RANDOM_INSTRUCTION

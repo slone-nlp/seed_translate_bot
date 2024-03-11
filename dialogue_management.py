@@ -188,6 +188,8 @@ class DialogueManager:
             else:
                 task.locked = True
                 self.db.save_task(task)
+                user.pbar_num = 0
+                user.pbar_den = len(self.db.get_unsolved_inputs_for_task(task=task))
                 resp, suggests = tasking.do_assign_input(
                     user=user, db=self.db, task=task
                 )

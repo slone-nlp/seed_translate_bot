@@ -35,6 +35,8 @@ class UserState(BaseModel):
     curr_sent_id: Optional[int] = None
     curr_result_id: Optional[int] = None
     curr_label_id: Optional[int] = None
+    pbar_num: Optional[int] = None
+    pbar_den: Optional[int] = None
 
     # Dialogue state
     state_id: Optional[str] = None
@@ -296,6 +298,14 @@ class Database:
             return task
         return None
 
+    def get_unsolved_inputs_for_task(self, task: TransTask) -> List[TransInput]:
+        return [
+            TransInput.model_construct(**obj)
+            for obj in self.trans_inputs.find(
+                {"task_id": task.task_id, "solved": False}
+            )
+        ]
+
     def get_next_unsolved_input(
         self,
         task: TransTask,
@@ -307,12 +317,7 @@ class Database:
         # then we should skip this input
         if prev_sent_id is None:
             prev_sent_id = -1
-        all_inputs = [
-            TransInput.model_construct(**obj)
-            for obj in self.trans_inputs.find(
-                {"task_id": task.task_id, "solved": False}
-            )
-        ]
+        all_inputs = self.get_unsolved_inputs_for_task(task=task)
         prev_inputs = sorted(
             [inp for inp in all_inputs if inp.input_id > prev_sent_id],
             key=lambda x: x.input_id,
