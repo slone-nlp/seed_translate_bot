@@ -161,7 +161,7 @@ class DialogueManager:
                 resp = f"Новое задание: #{task.task_id}."
                 if task.prompt:
                     resp += "\n" + task.prompt
-                resp += "\nГотовы к выполнению задания?"
+                resp += "\nГотовы к выполнению этого задания или хотите попробовать другое?"
                 suggests = [texts.RESP_TAKE_TASK, texts.RESP_SKIP_TASK]
                 user.curr_proj_id = task.project_id
                 user.curr_task_id = task.task_id
