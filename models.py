@@ -4,10 +4,10 @@ import time
 from typing import Dict, List, Optional, Set, Union
 
 import mongomock
-import telebot
-from pydantic import BaseModel
-from pymongo import MongoClient
-from pymongo.collection import Collection
+import telebot  # type: ignore
+from pydantic import BaseModel  # type: ignore
+from pymongo import MongoClient  # type: ignore
+from pymongo.collection import Collection  # type: ignore
 
 logger = logging.getLogger(__name__)
 
@@ -478,6 +478,7 @@ class Database:
         if obj:
             label = TransLabel.model_construct(**obj)
             return label
+        return None
 
     def create_label(self, user_id: int, trans_result: TransResult) -> TransLabel:
         label = TransLabel(

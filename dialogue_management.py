@@ -4,7 +4,7 @@ from dataclasses import dataclass
 from datetime import datetime
 from typing import List, Union
 
-import telebot
+import telebot  # type: ignore
 
 import models
 import tasking
@@ -94,7 +94,7 @@ class DialogueManager:
         )
         print("got message: '{}' from user {} ({})".format(text, user_id, username))
 
-        suggested_suggests = []
+        suggested_suggests: List[str] = []
         default_markup = render_markup(suggested_suggests)
 
         if not text:
@@ -161,7 +161,9 @@ class DialogueManager:
                 resp = f"Новое задание: #{task.task_id}."
                 if task.prompt:
                     resp += "\n" + task.prompt
-                resp += "\nГотовы к выполнению этого задания или хотите попробовать другое?"
+                resp += (
+                    "\nГотовы к выполнению этого задания или хотите попробовать другое?"
+                )
                 suggests = [texts.RESP_TAKE_TASK, texts.RESP_SKIP_TASK]
                 user.curr_proj_id = task.project_id
                 user.curr_task_id = task.task_id
@@ -177,7 +179,11 @@ class DialogueManager:
             self.send_text_to_user(user_id, resp, suggests=suggests)
 
         elif user.state_id == States.SUGGEST_TASK and text in {texts.RESP_TAKE_TASK}:
-            task = self.db.get_task(user.curr_task_id)
+            task = (
+                self.db.get_task(user.curr_task_id)
+                if user.curr_task_id is not None
+                else None
+            )
             if task is None:
                 self.send_text_to_user(
                     user_id, texts.RESP_TASK_LOST, reply_markup=default_markup
@@ -218,9 +224,15 @@ class DialogueManager:
             user.state_id == States.ASK_COHERENCE
             and text not in texts.COHERENCE_RESPONSES
         ):
+            assert (
+                user.curr_sent_id is not None
+                and user.curr_result_id is not None
+                and user.curr_label_id is not None
+            )
             inp = self.db.get_input(input_id=user.curr_sent_id)
             res = self.db.get_translation(result_id=user.curr_result_id)
             label = self.db.get_label(label_id=user.curr_label_id)
+            assert inp is not None and res is not None and label is not None
             resp, suggests = tasking.do_ask_coherence(
                 user=user,
                 db=self.db,
@@ -230,9 +242,15 @@ class DialogueManager:
             )
             self.send_text_to_user(user_id, resp, suggests=suggests)
         elif user.state_id == States.ASK_XSTS and text not in texts.XSTS_RESPONSES:
+            assert (
+                user.curr_sent_id is not None
+                and user.curr_result_id is not None
+                and user.curr_label_id is not None
+            )
             inp = self.db.get_input(input_id=user.curr_sent_id)
             res = self.db.get_translation(result_id=user.curr_result_id)
             label = self.db.get_label(label_id=user.curr_label_id)
+            assert inp is not None and res is not None and label is not None
             resp, suggests = tasking.do_ask_xsts(
                 user=user,
                 db=self.db,

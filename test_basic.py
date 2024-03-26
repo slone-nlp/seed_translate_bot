@@ -1,11 +1,12 @@
+import time
+
+import telebot.types  # type: ignore
+
 import models
 import tasking
 import texts
+from dialogue_management import DialogueManager, FakeBot
 from states import States
-from dialogue_management import FakeBot, DialogueManager
-import telebot.types
-import time
-
 
 TEST_USER_ID = 123
 TEST_PROJECT_ID = 100500

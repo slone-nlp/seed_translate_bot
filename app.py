@@ -3,7 +3,7 @@
 import logging
 import os
 
-import telebot
+import telebot  # type: ignore
 from flask import Flask, request
 
 import models

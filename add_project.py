@@ -1,7 +1,7 @@
 import os
 
 import pandas as pd
-from tqdm.auto import tqdm
+from tqdm.auto import tqdm  # type: ignore
 
 import models
 

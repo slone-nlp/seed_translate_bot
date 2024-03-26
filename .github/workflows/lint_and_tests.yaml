@@ -32,7 +32,7 @@ jobs:
           python -m pip install --upgrade 'pip>=22.1.2'
           python -m pip show pip
           python -m pip install -r requirements.txt
-          python -m pip install mypy pytest
+          python -m pip install mypy pytest pandas tqdm
       - name: pytest
         run: python -m pytest
       - name: mypy

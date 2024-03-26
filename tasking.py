@@ -2,18 +2,10 @@ import random
 from typing import List, Optional, Tuple
 
 import texts
-from language_coding import get_lang_name, LangCodeForm
-from models import (
-    Database,
-    TransInput,
-    TransResult,
-    TransTask,
-    UserState,
-    TransLabel,
-    TransStatus,
-)
+from language_coding import LangCodeForm, get_lang_name
+from models import (Database, TransInput, TransLabel, TransResult, TransStatus,
+                    TransTask, UserState)
 from states import States
-
 
 N_IMPRESSIONS_FOR_INSTRUCTIONS = 3
 P_RANDOM_INSTRUCTION = 0.05
@@ -23,6 +15,7 @@ def do_assign_input(
     user: UserState, db: Database, task: TransTask
 ) -> Tuple[str, List[str]]:
     # we do a loop, because we may need to skip some inputs
+    assert user.user_id is not None
     prev_sent_id = user.curr_sent_id
     for attempt in range(100):
 
@@ -109,7 +102,7 @@ def do_not_assing_new_task(
     db: Database,
 ) -> Tuple[str, List[str]]:
     response = texts.DO_NOT_ASSIGN_TASK + "\n\n" + texts.MENU
-    suggests = []
+    suggests: List[str] = []
     return response, suggests
 
 
@@ -125,6 +118,7 @@ def do_ask_to_translate(
     src_text = inp.source
 
     proj = db.get_project(project_id=inp.project_id)
+    assert proj is not None and proj.src_code is not None and proj.tgt_code is not None
     src_lang_phrase = get_lang_name(proj.src_code, code_form_id=LangCodeForm.src)
     tgt_lang_phrase = get_lang_name(proj.tgt_code, code_form_id=LangCodeForm.tgt)
     response = f"{pbar_text(user)}\nВот исходный текст: <b>{src_text}</b>\n\nПожалуйста, предложите его перевод {src_lang_phrase} {tgt_lang_phrase}:"
@@ -196,7 +190,9 @@ def do_ask_xsts(
 def do_save_coherence_and_continue(
     user: UserState, db: Database, user_text: str
 ) -> Tuple[str, List[str]]:
+    assert user.curr_label_id is not None
     label = db.get_label(label_id=user.curr_label_id)
+    assert label is not None
     label.coherence_score = texts.COHERENCE_RESPONSES_MAP.get(user_text)
     db.save_label(label)
     return do_finalize_label_and_continue(user=user, db=db, label=label)
@@ -206,7 +202,9 @@ def do_save_xsts_and_continue(
     user: UserState, db: Database, user_text: str
 ) -> Tuple[str, List[str]]:
     score_value = int(user_text)
+    assert user.curr_label_id is not None
     label = db.get_label(label_id=user.curr_label_id)
+    assert label is not None
     label.semantics_score = score_value
     db.save_label(label)
     return do_finalize_label_and_continue(user=user, db=db, label=label)
@@ -215,6 +213,12 @@ def do_save_xsts_and_continue(
 def do_finalize_label_and_continue(
     user: UserState, db: Database, label: TransLabel
 ) -> Tuple[str, List[str]]:
+    assert (
+        user.curr_proj_id is not None
+        and user.curr_task_id is not None
+        and user.curr_sent_id is not None
+        and user.curr_result_id is not None
+    )
     project = db.get_project(project_id=user.curr_proj_id)
     task = db.get_task(task_id=user.curr_task_id)
     inp = db.get_input(input_id=user.curr_sent_id)
@@ -261,6 +265,7 @@ def do_finalize_label_and_continue(
         return do_assign_input(user=user, db=db, task=task)
 
     # if the user has unscored translations for this input, we won't ask them for new ones
+    assert user.user_id is not None
     if db.user_has_unscored_translations_for_input(
         user_id=user.user_id, input_id=inp.input_id
     ):
@@ -273,7 +278,10 @@ def do_finalize_label_and_continue(
 def do_save_translation_and_ask_for_next(
     user: UserState, db: Database, user_text: str
 ) -> Tuple[str, List[str]]:
+    assert user.curr_sent_id is not None
     inp = db.get_input(input_id=user.curr_sent_id)
+    assert inp is not None
+    assert user.user_id is not None
     translation = db.create_translation(
         user_id=user.user_id,
         trans_input=inp,
@@ -298,11 +306,12 @@ def do_save_translation_and_ask_for_next(
 
     # Ask for a new translation in the same task
     task = db.get_task(task_id=translation.task_id)
+    assert task is not None
     return do_assign_input(user=user, db=db, task=task)
 
 
 def do_ask_setup(user: UserState) -> Tuple[str, List[str]]:
-    suggests = []
+    suggests: List[str] = []
     if not user.src_langs:
         user.state_id = States.SETUP_ASK_SRC_LANG
         response = texts.SETUP_ASK_SRC_LANG
@@ -332,13 +341,13 @@ def do_get_project_status(user: UserState, db: Database) -> Tuple[str, List[str]
         f"  оценено переводов:    {stats_dict.get('n_labels')}",
         f"  положительных оценок: {stats_dict.get('n_positive_labels')}",
         f"  отрицательных оценок: {stats_dict.get('n_negative_labels')}",
-        "</pre>"
+        "</pre>",
     ]
     return "\n".join(lines), []
 
 
 def do_tell_guidelines(user: UserState, db: Database) -> Tuple[str, List[str]]:
-    suggests = []
+    suggests: List[str] = []
     response = "\n\n".join(
         [
             texts.GUIDELINES_HEADER,
@@ -352,12 +361,16 @@ def do_tell_guidelines(user: UserState, db: Database) -> Tuple[str, List[str]]:
 
 def do_resume_task(user: UserState, db: Database) -> Tuple[str, List[str]]:
     # repeat the last message in the current task, without changing the state
-    suggests = []
+    suggests: List[str] = []
 
-    task = db.get_task(user.curr_task_id)
-    inp = db.get_input(user.curr_sent_id)
-    res = db.get_translation(user.curr_result_id)
-    label = db.get_label(user.curr_label_id)
+    task = db.get_task(user.curr_task_id) if user.curr_task_id is not None else None
+    inp = db.get_input(user.curr_sent_id) if user.curr_sent_id is not None else None
+    res = (
+        db.get_translation(user.curr_result_id)
+        if user.curr_result_id is not None
+        else None
+    )
+    label = db.get_label(user.curr_label_id) if user.curr_label_id is not None else None
 
     if user.state_id == States.ASK_COHERENCE and inp and res and label:
         response, suggests = do_ask_coherence(

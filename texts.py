@@ -1,4 +1,4 @@
-from models import INCOHERENT, COHERENT
+from models import COHERENT, INCOHERENT
 
 MENU = """Полезные команды:
 /guidelines - инструкции по переводу и его оценке (с этого стоит начать!) 
