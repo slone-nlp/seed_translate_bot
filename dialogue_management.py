@@ -118,7 +118,7 @@ class DialogueManager:
                 user.user_id, response, suggests=suggests, parse_mode="html"
             )
 
-        elif text in {"/project_status"}:
+        elif text in {"/stats"}:
             response, suggests = tasking.do_get_project_status(user=user, db=self.db)
             self.db.save_user(user)
             self.send_text_to_user(

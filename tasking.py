@@ -323,7 +323,18 @@ def do_get_project_status(user: UserState, db: Database) -> Tuple[str, List[str]
     if project_id is None:
         project_id = 1  # TODO (future): propose to choose a project
     stats_dict = db.get_project_stats(project_id=project_id)
-    return f"Текущая статистика по проекту #{project_id}: {stats_dict}", []
+    lines = [
+        f"Текущая статистика по проекту #{project_id}:",
+        "<pre>",
+        f"  всего предложений:    {stats_dict.get('n_inputs')}",
+        f"  полностью одобрено:   {stats_dict.get('n_solved')}",
+        f"  предложено переводов: {stats_dict.get('n_user_translations')}",
+        f"  оценено переводов:    {stats_dict.get('n_labels')}",
+        f"  положительных оценок: {stats_dict.get('n_positive_labels')}",
+        f"  отрицательных оценок: {stats_dict.get('n_negative_labels')}",
+        "</pre>"
+    ]
+    return "\n".join(lines), []
 
 
 def do_tell_guidelines(user: UserState, db: Database) -> Tuple[str, List[str]]:
