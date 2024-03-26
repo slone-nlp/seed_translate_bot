@@ -1,6 +1,6 @@
 import os
 
-import pandas as pd
+import pandas as pd  # type: ignore
 from tqdm.auto import tqdm  # type: ignore
 
 import models

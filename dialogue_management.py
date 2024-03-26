@@ -37,7 +37,7 @@ class FakeBot:
     def __init__(self):
         self.messages: List[FakeResult] = []
 
-    def send_message(self, user_id, text, reply_markup=None, parse_mode=None):
+    def send_message(self, user_id, text, reply_markup=None, parse_mode=None) -> FakeResult:
         result = FakeResult(user_id=user_id, text=text, message_id=len(self.messages))
         self.messages.append(result)
         return result
