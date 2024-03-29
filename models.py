@@ -528,6 +528,7 @@ class Database:
         ]
         return dict(
             n_inputs=len(all_inputs),
+            n_partial=len({tr.input_id for tr in all_translations if tr.status == TransStatus.UNCHECKED and tr.n_approvals > 0}),
             n_solved=sum(inp.solved for inp in all_inputs),
             n_user_translations=sum(tr.user_id != NO_USER for tr in all_translations),
             n_rejected_user_translations=sum(

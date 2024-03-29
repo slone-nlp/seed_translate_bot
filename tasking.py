@@ -121,7 +121,7 @@ def do_ask_to_translate(
     assert proj is not None and proj.src_code is not None and proj.tgt_code is not None
     src_lang_phrase = get_lang_name(proj.src_code, code_form_id=LangCodeForm.src)
     tgt_lang_phrase = get_lang_name(proj.tgt_code, code_form_id=LangCodeForm.tgt)
-    response = f"{pbar_text(user)}\nВот исходный текст: <b>{src_text}</b>\n\nПожалуйста, предложите его перевод {src_lang_phrase} {tgt_lang_phrase}:"
+    response = f"{pbar_text(user)}\nВот исходный текст: <code>{src_text}</code>\n\nПожалуйста, предложите его перевод {src_lang_phrase} {tgt_lang_phrase}:"
     if (
         user.n_translations < N_IMPRESSIONS_FOR_INSTRUCTIONS
         or random.random() < P_RANDOM_INSTRUCTION
@@ -145,7 +145,7 @@ def do_ask_coherence(
     label: TransLabel,
 ) -> Tuple[str, List[str]]:
     user.state_id = States.ASK_COHERENCE
-    response = f"{pbar_text(user)}\nВот исходный текст: <b>{inp.source}</b>\n\nВот перевод: <b>{res.translation}</b>\n\n{texts.COHERENCE_PROMPT}"
+    response = f"{pbar_text(user)}\nВот исходный текст: <code>{inp.source}</code>\n\nВот перевод: <code>{res.translation}</code>\n\n{texts.COHERENCE_PROMPT}"
     if (
         user.n_labels < N_IMPRESSIONS_FOR_INSTRUCTIONS
         or random.random() < P_RANDOM_INSTRUCTION
@@ -170,7 +170,7 @@ def do_ask_xsts(
     label: TransLabel,
 ) -> Tuple[str, List[str]]:
     user.state_id = States.ASK_XSTS
-    response = f"{pbar_text(user)}\nВот исходный текст: <b>{inp.source}</b>\n\nВот перевод: <b>{res.translation}</b>\n\n{texts.XSTS_PROMPT}"
+    response = f"{pbar_text(user)}\nВот исходный текст: <code>{inp.source}</code>\n\nВот перевод: <code>{res.translation}</code>\n\n{texts.XSTS_PROMPT}"
     if (
         user.n_labels < N_IMPRESSIONS_FOR_INSTRUCTIONS
         or random.random() < P_RANDOM_INSTRUCTION
@@ -336,6 +336,7 @@ def do_get_project_status(user: UserState, db: Database) -> Tuple[str, List[str]
         f"Текущая статистика по проекту #{project_id}:",
         "<pre>",
         f"  всего предложений:    {stats_dict.get('n_inputs')}",
+        f"  частично одобрено:    {stats_dict.get('n_partial')}",
         f"  полностью одобрено:   {stats_dict.get('n_solved')}",
         f"  предложено переводов: {stats_dict.get('n_user_translations')}",
         f"  оценено переводов:    {stats_dict.get('n_labels')}",
