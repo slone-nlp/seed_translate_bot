@@ -196,14 +196,23 @@ class Database:
     def save_user(self, user: UserState) -> None:
         update_user_state(users_collection=self.mongo_users, state=user)
 
+    def get_all_users(self) -> List[UserState]:
+        return [UserState.model_construct(**obj) for obj in self.mongo_users.find()]
+
     def get_new_task(self, user: UserState) -> Optional[TransTask]:
         # TODO(future): in the future, filter by the current project and its languages
+        self.cleanup_locked_tasks()
         unfinished_task_ids = {
             (task["task_id"], task["completions"])
             for task in self.trans_tasks.find({"completed": False, "locked": False})
         }
         if len(unfinished_task_ids) == 0:
-            # TODO(nice): check if there are any tasks that are locked by mistake, and reconsider
+            # if all unfinished tasks are locked, pick any of the locked ones
+            unfinished_task_ids = {
+                (task["task_id"], task["completions"])
+                for task in self.trans_tasks.find({"completed": False})
+            }
+        if len(unfinished_task_ids) == 0:
             logger.info(f"Did not find any unfinished tasks!")
             return None
 
@@ -563,3 +572,23 @@ class Database:
                 ]
             ),
         )
+
+    def cleanup_locked_tasks(self):
+        users = self.get_all_users()
+        real_locked_task_ids = {
+            u.curr_task_id for u in users if u.curr_task_id is not None
+        }
+        locked_tasks = [
+            TransTask.model_construct(**obj)
+            for obj in self.trans_tasks.find({"locked": True})
+        ]
+        print(
+            f"found {len(locked_tasks)} tasks that are potentially locked, and {len(real_locked_task_ids)} real locks."
+        )
+        n_unlock = 0
+        for task in locked_tasks:
+            if task.task_id not in real_locked_task_ids:
+                task.locked = False
+                self.save_task(task)
+                n_unlock += 1
+        print(f"Unlocked {n_unlock} tasks.")
