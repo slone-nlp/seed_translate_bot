@@ -13,6 +13,7 @@ logger = logging.getLogger(__name__)
 
 NO_ID = -1
 NO_USER = -1
+FLUENT = 2
 COHERENT = 1
 INCOHERENT = 0
 
@@ -139,7 +140,11 @@ class TransLabel(BaseModel):
 
     @property
     def is_coherent(self) -> bool:
-        return self.coherence_score == COHERENT
+        return self.coherence_score in {COHERENT, FLUENT}
+
+    @property
+    def is_fluent(self) -> bool:
+        return self.coherence_score == FLUENT
 
     def is_positive(self, semantic_threshold) -> Optional[bool]:
         if self.coherence_score == INCOHERENT:
@@ -151,7 +156,7 @@ class TransLabel(BaseModel):
             return False
         if self.coherence_score is None or self.semantics_score is None:
             return None
-        return self.is_coherent and self.semantics_score >= semantic_threshold
+        return self.is_fluent and self.semantics_score >= semantic_threshold
 
 
 class Database:

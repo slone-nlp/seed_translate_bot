@@ -1,17 +1,11 @@
+import os
 import random
 from typing import List, Optional, Tuple
 
 import texts
 from language_coding import LangCodeForm, get_lang_name
-from models import (
-    Database,
-    TransInput,
-    TransLabel,
-    TransResult,
-    TransStatus,
-    TransTask,
-    UserState,
-)
+from models import (Database, TransInput, TransLabel, TransResult, TransStatus,
+                    TransTask, UserState)
 from states import States
 
 N_IMPRESSIONS_FOR_INSTRUCTIONS = 3
@@ -148,6 +142,7 @@ def do_ask_to_translate(
     if (
         user.n_translations < N_IMPRESSIONS_FOR_INSTRUCTIONS
         or random.random() < P_RANDOM_INSTRUCTION
+        or os.environ.get("FORCE_HINT_TRANSLATION")
     ):
         response = f"{response}\n\n{texts.TRANSLATION_GUIDELINE}"
 
@@ -166,12 +161,15 @@ def do_ask_coherence(
     inp: TransInput,
     res: TransResult,
     label: TransLabel,
+    show_help: Optional[bool] = None,
 ) -> Tuple[str, List[str]]:
     user.state_id = States.ASK_COHERENCE
     response = f"{pbar_text(user)}\nВот исходный текст: <code>{inp.source}</code>\n\nВот перевод: <code>{res.translation}</code>\n\n{texts.COHERENCE_PROMPT}"
     if (
         user.n_labels < N_IMPRESSIONS_FOR_INSTRUCTIONS
         or random.random() < P_RANDOM_INSTRUCTION
+        or show_help
+        or os.environ.get("FORCE_HINT_COHERENCE")
     ):
         response = f"{response}\n\n{texts.COHERENCE_GUIDELINE}"
     suggests = texts.COHERENCE_RESPONSES + [texts.COMMAND_SKIP]
@@ -191,12 +189,15 @@ def do_ask_xsts(
     inp: TransInput,
     res: TransResult,
     label: TransLabel,
+    show_help: Optional[bool] = None,
 ) -> Tuple[str, List[str]]:
     user.state_id = States.ASK_XSTS
     response = f"{pbar_text(user)}\nВот исходный текст: <code>{inp.source}</code>\n\nВот перевод: <code>{res.translation}</code>\n\n{texts.XSTS_PROMPT}"
     if (
         user.n_labels < N_IMPRESSIONS_FOR_INSTRUCTIONS
         or random.random() < P_RANDOM_INSTRUCTION
+        or show_help
+        or os.environ.get("FORCE_HINT_XSTS")
     ):
         response = f"{response}\n\n{texts.XSTS_GUIDELINE}"
     suggests = texts.XSTS_RESPONSES + [texts.COMMAND_SKIP]

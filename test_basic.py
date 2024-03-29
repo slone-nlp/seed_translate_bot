@@ -130,7 +130,7 @@ def test_basic_scenario():
     manager.respond(get_test_message("5"))
     task2_id = db.get_user(TEST_USER_ID).curr_task_id
     assert "связн" in bot.last_message.text
-    manager.respond(get_test_message(texts.RESP_COHERENT))
+    manager.respond(get_test_message(texts.RESP_FLUENT))
     assert "Хотите взять ещё одно?" in bot.last_message.text
 
     # Checking that the second task is already complete

@@ -247,6 +247,7 @@ class DialogueManager:
                 inp=inp,
                 res=res,
                 label=label,
+                show_help=True,
             )
             self.send_text_to_user(user_id, resp, suggests=suggests)
         elif user.state_id == States.ASK_XSTS and text not in texts.XSTS_RESPONSES:
@@ -265,6 +266,7 @@ class DialogueManager:
                 inp=inp,
                 res=res,
                 label=label,
+                show_help=True,
             )
             self.send_text_to_user(user_id, resp, suggests=suggests)
 
