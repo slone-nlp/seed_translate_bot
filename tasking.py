@@ -46,42 +46,27 @@ def do_assign_input(
             user.pbar_num = (user.pbar_num or 0) + 1
 
         # depending on the task, either choose the candidates to score or ask for a new translation
-        candidates = db.get_translations_for_input(inp)
-        # filter out the translations by the user and the translations that user has already scored
-        already_scored_candidates = db.get_translations_ids_scored_by_user(
-            user_id=user.user_id, task_id=task.task_id
-        )
-        pending_candidates = [
-            cand for cand in candidates if cand.status == TransStatus.UNCHECKED
-        ]
-
-        other_candidates = [
-            candidate
-            for candidate in candidates
-            if candidate.user_id != user.user_id
-            and candidate.translation_id not in already_scored_candidates
-        ]
-        other_pending = [
-            candidate
-            for candidate in other_candidates
-            if candidate.status == TransStatus.UNCHECKED
-        ]
+        (
+            all_translations,
+            unchecked_translations_unseen_by_user,
+            all_unchecked_translations,
+        ) = find_translations_to_score(user=user, db=db, inp=inp)
         print(
-            f"for input {inp.input_id} found {len(candidates)} translations: {len(already_scored_candidates)} scored by the user, and {len(other_candidates)} other candidates, including {len(other_pending)} unchecked."
+            f"for input {inp.input_id} found {len(all_translations)} translations: including {len(all_unchecked_translations)} unchecked, and {len(unchecked_translations_unseen_by_user)} unseen by user."
         )
 
         # Case 1: there are pending translations by other users, which the current user hasn't scored => asking to score
-        if len(other_pending) > 0:
-            candidate = other_pending[0]
+        if len(unchecked_translations_unseen_by_user) > 0:
+            candidate = unchecked_translations_unseen_by_user[0]
             print(f"scoring the candidate translation {candidate}")
             label = db.create_label(user_id=user.user_id, trans_result=candidate)
             return do_ask_xsts(user=user, db=db, inp=inp, res=candidate, label=label)
 
         # Case 2: no translations to score, but there are some pending translatons => skip the input, until the pending translations are scored
-        elif len(pending_candidates):
+        elif len(all_unchecked_translations):
             prev_sent_id = inp.input_id
             print(
-                f"continuing to another input, because there are {len(pending_candidates)} unscored translations for the input {inp.input_id}"
+                f"continuing to another input, because there are {len(all_unchecked_translations)} unscored translations for the input {inp.input_id}"
             )
             continue
 
@@ -94,6 +79,37 @@ def do_assign_input(
     return (
         f"Произошло что-то странное. Пожалуйста, напишите @cointegrated, что по заданию {task.task_id} вам не смогли выдать текст.",
         [],
+    )
+
+
+def find_translations_to_score(
+    user: UserState, db: Database, inp: TransInput
+) -> Tuple[List[TransResult], List[TransResult], List[TransResult]]:
+    all_translations = db.get_translations_for_input(inp)
+    # filter out the translations by the user and the translations that user has already scored
+    assert user.user_id is not None
+    already_scored_candidates = db.get_translations_ids_scored_by_user(
+        user_id=user.user_id, task_id=inp.task_id
+    )
+    all_unchecked_translations = [
+        cand for cand in all_translations if cand.status == TransStatus.UNCHECKED
+    ]
+
+    other_candidates = [
+        candidate
+        for candidate in all_translations
+        if candidate.user_id != user.user_id
+        and candidate.translation_id not in already_scored_candidates
+    ]
+    unchecked_translations_unseen_by_user = [
+        candidate
+        for candidate in other_candidates
+        if candidate.status == TransStatus.UNCHECKED
+    ]
+    return (
+        all_translations,
+        unchecked_translations_unseen_by_user,
+        all_unchecked_translations,
     )
 
 
@@ -263,6 +279,19 @@ def do_finalize_label_and_continue(
     # if the user has accepted a translation, no reason in asking for a new one; jumping to the next input
     if accepted:
         return do_assign_input(user=user, db=db, task=task)
+
+    # if translation is rejected, but there is another candidate, assign it!
+    (
+        all_translations,
+        unchecked_translations_unseen_by_user,
+        all_unchecked_translations,
+    ) = find_translations_to_score(user=user, db=db, inp=inp)
+    assert user.user_id is not None
+    if len(unchecked_translations_unseen_by_user) > 0:
+        candidate = unchecked_translations_unseen_by_user[0]
+        print(f"scoring the candidate translation {candidate}")
+        label = db.create_label(user_id=user.user_id, trans_result=candidate)
+        return do_ask_xsts(user=user, db=db, inp=inp, res=candidate, label=label)
 
     # if the user has unscored translations for this input, we won't ask them for new ones
     assert user.user_id is not None

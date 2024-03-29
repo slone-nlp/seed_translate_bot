@@ -39,8 +39,8 @@ def setup_fake_project(db: models.Database):
     project.project_id = TEST_PROJECT_ID
     project.min_score = 4
     project.overlap = 1
-    project.src_code = 'eng'
-    project.tgt_code = 'rus'
+    project.src_code = "eng"
+    project.tgt_code = "rus"
     db.save_project(project)
     task1 = db.create_task(
         project=project, prompt="This is a first task prompt", save=True
