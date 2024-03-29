@@ -141,6 +141,12 @@ class DialogueManager:
             self.send_text_to_user(
                 user.user_id, response, suggests=suggests, parse_mode="html"
             )
+        elif text in {"/skip"}:
+            response, suggests = tasking.do_skip_input(user=user, db=self.db)
+            self.db.save_user(user)
+            self.send_text_to_user(
+                user.user_id, response, suggests=suggests, parse_mode="html"
+            )
 
         # The main scenario
         elif (

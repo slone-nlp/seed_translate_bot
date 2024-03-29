@@ -3,8 +3,15 @@ from typing import List, Optional, Tuple
 
 import texts
 from language_coding import LangCodeForm, get_lang_name
-from models import (Database, TransInput, TransLabel, TransResult, TransStatus,
-                    TransTask, UserState)
+from models import (
+    Database,
+    TransInput,
+    TransLabel,
+    TransResult,
+    TransStatus,
+    TransTask,
+    UserState,
+)
 from states import States
 
 N_IMPRESSIONS_FOR_INSTRUCTIONS = 3
@@ -150,7 +157,7 @@ def do_ask_to_translate(
     user.curr_sent_id = inp.input_id
     user.curr_result_id = None
     user.curr_label_id = None
-    return response, []
+    return response, [texts.COMMAND_SKIP]
 
 
 def do_ask_coherence(
@@ -167,7 +174,7 @@ def do_ask_coherence(
         or random.random() < P_RANDOM_INSTRUCTION
     ):
         response = f"{response}\n\n{texts.COHERENCE_GUIDELINE}"
-    suggests = texts.COHERENCE_RESPONSES
+    suggests = texts.COHERENCE_RESPONSES + [texts.COMMAND_SKIP]
 
     db.save_label(label)
     user.curr_proj_id = inp.project_id
@@ -192,7 +199,7 @@ def do_ask_xsts(
         or random.random() < P_RANDOM_INSTRUCTION
     ):
         response = f"{response}\n\n{texts.XSTS_GUIDELINE}"
-    suggests = texts.XSTS_RESPONSES
+    suggests = texts.XSTS_RESPONSES + [texts.COMMAND_SKIP]
 
     db.save_label(label)
     user.curr_proj_id = inp.project_id
@@ -433,3 +440,13 @@ def do_resume_task(user: UserState, db: Database) -> Tuple[str, List[str]]:
     else:
         response = texts.NO_CURRENT_TASK + "\n" + texts.NAVIGATION
     return response, suggests
+
+
+def do_skip_input(user: UserState, db: Database) -> Tuple[str, List[str]]:
+    """Skip the current translation input and go to the next one"""
+    suggests: List[str] = []
+    task = db.get_task(user.curr_task_id) if user.curr_task_id is not None else None
+    if task is None or user.curr_sent_id is None:
+        return texts.RESP_NOTHING_TO_SKIP, suggests
+
+    return do_assign_input(user=user, db=db, task=task)
