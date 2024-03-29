@@ -156,7 +156,12 @@ class TransLabel(BaseModel):
             return False
         if self.coherence_score is None or self.semantics_score is None:
             return None
-        return self.is_fluent and self.semantics_score >= semantic_threshold
+        if (self.submitted_date or 0) > 1711713600:  # (2024, 3, 29, 12, 0, 0)
+            # after this date, the coherence question became 3-level, and only fluent texts are accepted
+            return self.is_fluent and self.semantics_score >= semantic_threshold
+        else:
+            # before this date, the coherence score was 2-level, and all coherent texts were accepted
+            return self.is_coherent and self.semantics_score >= semantic_threshold
 
 
 class Database:
