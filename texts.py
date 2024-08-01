@@ -80,6 +80,17 @@ COHERENCE_RESPONSES_MAP = {
     RESP_INCOHERENT: INCOHERENT,
     RESP_COHERENT: COHERENT,
     RESP_FLUENT: FLUENT,
+    # capital versions
+    RESP_INCOHERENT.upper(): INCOHERENT,
+    RESP_COHERENT.upper(): COHERENT,
+    RESP_FLUENT.upper(): FLUENT,
+    # numeric versions
+    "1": INCOHERENT,
+    "2": COHERENT,
+    "3": FLUENT,
+    "1)": INCOHERENT,
+    "2)": COHERENT,
+    "3)": FLUENT,
 }
 
 TRANSLATION_GUIDELINE = """Приступая к собственному переводу, пожалуйста, прочитайте гайдлайны проекта OLDI (внизу страницы https://oldi.org/guidelines).

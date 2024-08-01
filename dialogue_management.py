@@ -211,7 +211,7 @@ class DialogueManager:
                 self.send_text_to_user(user_id, resp, suggests=suggests)
 
         elif (
-            user.state_id == States.ASK_COHERENCE and text in texts.COHERENCE_RESPONSES
+            user.state_id == States.ASK_COHERENCE and text in texts.COHERENCE_RESPONSES_MAP
         ):
             resp, suggests = tasking.do_save_coherence_and_continue(
                 user=user, db=self.db, user_text=text
