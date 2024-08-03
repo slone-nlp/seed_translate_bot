@@ -4,8 +4,8 @@ from dataclasses import dataclass
 from datetime import datetime
 from typing import List, Union
 
-import telebot  # type: ignore
 import sentry_sdk
+import telebot  # type: ignore
 
 import models
 import tasking
@@ -216,7 +216,8 @@ class DialogueManager:
                 self.send_text_to_user(user_id, resp, suggests=suggests)
 
         elif (
-            user.state_id == States.ASK_COHERENCE and text in texts.COHERENCE_RESPONSES_MAP
+            user.state_id == States.ASK_COHERENCE
+            and text in texts.COHERENCE_RESPONSES_MAP
         ):
             resp, suggests = tasking.do_save_coherence_and_continue(
                 user=user, db=self.db, user_text=text
@@ -336,7 +337,9 @@ class DialogueManager:
                 continue
 
             # pinging the user at most once per 23 hours
-            lag = time.time() - max(user.last_activity_time or 0, user.last_reminder_time or 0)
+            lag = time.time() - max(
+                user.last_activity_time or 0, user.last_reminder_time or 0
+            )
             if lag < 60 * 60 * 23:
                 continue
 

@@ -588,7 +588,9 @@ class Database:
     def cleanup_locked_tasks(self):
         users = self.get_all_users()
         real_locked_task_ids = {
-            u.curr_task_id for u in users if u.curr_task_id is not None and not u.is_blocked
+            u.curr_task_id
+            for u in users
+            if u.curr_task_id is not None and not u.is_blocked
         }
         locked_tasks = [
             TransTask.model_construct(**obj)

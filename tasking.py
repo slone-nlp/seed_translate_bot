@@ -4,15 +4,8 @@ from typing import List, Optional, Tuple
 
 import texts
 from language_coding import LangCodeForm, get_lang_name
-from models import (
-    Database,
-    TransInput,
-    TransLabel,
-    TransResult,
-    TransStatus,
-    TransTask,
-    UserState,
-)
+from models import (Database, TransInput, TransLabel, TransResult, TransStatus,
+                    TransTask, UserState)
 from states import States
 
 N_IMPRESSIONS_FOR_INSTRUCTIONS = 3
