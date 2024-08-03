@@ -5,6 +5,7 @@ from datetime import datetime
 from typing import List, Union
 
 import telebot  # type: ignore
+import sentry_sdk
 
 import models
 import tasking
@@ -83,6 +84,10 @@ class DialogueManager:
         user: models.UserState = models.find_user(
             self.db.mongo_users, user=msg.from_user
         )
+
+        user.last_activity_time = time.time()
+        user.n_last_reminders = 0
+        self.db.save_user(user)
 
         self.db.mongo_messages.insert_one(
             {
@@ -314,3 +319,62 @@ class DialogueManager:
                 texts.FALLBACK,
                 reply_markup=default_markup,
             )
+
+    def run_reminders(self):
+        self.db.cleanup_locked_tasks()
+        for user in self.db.get_all_users():
+            if user.is_blocked:
+                user.curr_task_id = None
+                user.curr_sent_id = None
+                user.curr_label_id = None
+                user.curr_result_id = None
+                self.db.save_user(user)
+                continue
+
+            # the user seems to be dead, not bothering them
+            if user.n_last_reminders > 10:
+                continue
+
+            # pinging the user at most once per 23 hours
+            lag = time.time() - max(user.last_activity_time or 0, user.last_reminder_time or 0)
+            if lag < 60 * 60 * 23:
+                continue
+
+            # now just doing as if the user has pressed "resume"
+            response, suggests = tasking.do_resume_task(user=user, db=self.db)
+
+            # if there is no current task, suggest a new one:
+            if response.startswith(texts.NO_CURRENT_TASK):
+                task = self.db.get_new_task(user=user)
+                # if there is no task for a user, do nothing!
+                if task is None:
+                    continue
+
+                response = f"Я бы хотел вам предложить новое задание: #{task.task_id}."
+                if task.prompt:
+                    response += "\n" + task.prompt
+                response += (
+                    "\nГотовы к выполнению этого задания или хотите попробовать другое?"
+                )
+                suggests = [texts.RESP_TAKE_TASK, texts.RESP_SKIP_TASK]
+                user.curr_proj_id = task.project_id
+                user.curr_task_id = task.task_id
+                user.state_id = States.SUGGEST_TASK
+
+            response = f"Добрый день! Проект ещё не завершён, и я хотел бы вас попросить, когда у вас будет время, пройтись по ещё некоторым переводам.\n\n{response}"
+
+            user.n_last_reminders = (user.n_last_reminders or 0) + 1
+            user.last_reminder_time = time.time()
+
+            self.db.save_user(user)
+            try:
+                self.send_text_to_user(
+                    user.user_id, response, suggests=suggests, parse_mode="html"
+                )
+            except Exception as e:
+                sentry_sdk.capture_exception(e)
+                user.is_blocked = True
+                user.block_log = str(e)
+                self.db.save_user(user)
+
+            time.sleep(5)  # 5 seconds between each user, to avoid spamming

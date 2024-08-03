@@ -46,6 +46,13 @@ class UserState(BaseModel):
     n_labels: int = 0
     n_translations: int = 0
 
+    # User status
+    is_blocked: bool = False  # blocked the bot in Telegram
+    block_log: Optional[str] = None
+    last_activity_time: Optional[float] = None
+    last_reminder_time: Optional[float] = None
+    n_last_reminders: int = 0
+
 
 def update_user_state(users_collection: Collection, state: UserState):
     dumped = state.model_dump()
@@ -581,7 +588,7 @@ class Database:
     def cleanup_locked_tasks(self):
         users = self.get_all_users()
         real_locked_task_ids = {
-            u.curr_task_id for u in users if u.curr_task_id is not None
+            u.curr_task_id for u in users if u.curr_task_id is not None and not u.is_blocked
         }
         locked_tasks = [
             TransTask.model_construct(**obj)

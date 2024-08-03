@@ -4,3 +4,4 @@ pymongo
 mongomock
 pydantic
 sentry-sdk
+apscheduler
