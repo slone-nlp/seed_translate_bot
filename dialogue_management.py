@@ -1,4 +1,5 @@
 import logging
+import os
 import time
 from dataclasses import dataclass
 from datetime import datetime
@@ -15,6 +16,9 @@ from states import States
 logging.basicConfig(level=logging.DEBUG)
 
 logger = logging.getLogger(__name__)
+
+
+CALL_KEY = os.environ.get("CALL_KEY")
 
 
 def render_markup(suggests=None, max_columns=3, initial_ratio=2):
@@ -149,6 +153,19 @@ class DialogueManager:
         elif text in {"/skip"}:
             response, suggests = tasking.do_skip_input(user=user, db=self.db)
             self.db.save_user(user)
+            self.send_text_to_user(
+                user.user_id, response, suggests=suggests, parse_mode="html"
+            )
+
+        elif text == CALL_KEY and CALL_KEY is not None:
+            response = "Начинаю обход юзеров..."
+            suggests = suggested_suggests
+            self.send_text_to_user(
+                user.user_id, response, suggests=suggests, parse_mode="html"
+            )
+            self.run_reminders()
+            response = "Обход юзеров завершён!"
+            suggests = suggested_suggests
             self.send_text_to_user(
                 user.user_id, response, suggests=suggests, parse_mode="html"
             )

@@ -17,18 +17,20 @@ if os.getenv("SENTRY_DSN", None) is not None:
     sentry_sdk.init(os.environ["SENTRY_DSN"])  # type: ignore
 
 
+scheduler = BackgroundScheduler()
+# https://apscheduler.readthedocs.io/en/stable/modules/triggers/cron.html
+# the time in UTC, so the pushes will be sent each 21 pm (by Moscow time)
+scheduler.add_job(DM.run_reminders, "cron", hour=18, jitter=60 * 1)
+# scheduler.add_job(hr.update_data, 'interval', minutes=15, jitter=300)
+# # scheduler.add_job(pusher.wake_up, 'cron', minute='*/5') # debug every 5 minutes
+# scheduler.add_job(pusher.check_jobs, 'interval', minutes=1, jitter=15)
+
+
 def main():
     parser = argparse.ArgumentParser(description="Run the bot")
     parser.add_argument("--poll", action="store_true")
 
-    scheduler = BackgroundScheduler()
-    # https://apscheduler.readthedocs.io/en/stable/modules/triggers/cron.html
-    # the time in UTC, so the pushes will be sent each 21 pm (by Moscow time)
-    scheduler.add_job(DM.run_reminders, "cron", hour=18, jitter=60 * 1)
-    # scheduler.add_job(hr.update_data, 'interval', minutes=15, jitter=300)
-    # # scheduler.add_job(pusher.wake_up, 'cron', minute='*/5') # debug every 5 minutes
-    # scheduler.add_job(pusher.check_jobs, 'interval', minutes=1, jitter=15)
-
+    scheduler.start()
     args = parser.parse_args()
     if args.poll:
         bot.remove_webhook()
