@@ -7,6 +7,7 @@ from typing import List, Union
 
 import sentry_sdk
 import telebot  # type: ignore
+from telebot.apihelper import ApiTelegramException  # type: ignore
 
 import models
 import tasking
@@ -393,8 +394,13 @@ class DialogueManager:
                 )
             except Exception as e:
                 sentry_sdk.capture_exception(e)
-                user.is_blocked = True
-                user.block_log = str(e)
-                self.db.save_user(user)
+                logger.info(f'Error when pushing a message: {e}')
+                if isinstance(e, ApiTelegramException):
+                    description = e.result_json.get('description', '') if e.result_json else ''
+                    if description and ('blocked' in description or 'user is deactivated' in description):
+                        user.is_blocked = True
+                        user.block_log = str(e)
+                        self.db.save_user(user)
+                        logger.info(f'Unsubscribing the user {user.user_id} after an unsuccessful Telegram push ({description})')
 
             time.sleep(5)  # 5 seconds between each user, to avoid spamming
