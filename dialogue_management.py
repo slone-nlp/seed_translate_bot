@@ -1,5 +1,6 @@
 import logging
 import os
+import random
 import time
 from dataclasses import dataclass
 from datetime import datetime
@@ -354,11 +355,15 @@ class DialogueManager:
             if user.n_last_reminders > 10:
                 continue
 
-            # pinging the user at most once per 23 hours
+            # pinging the user at most once per 3 days
             lag = time.time() - max(
                 user.last_activity_time or 0, user.last_reminder_time or 0
             )
-            if lag < 60 * 60 * 23:
+            if lag < 60 * 60 * 24 * 3:
+                continue
+
+            # even if it's time for a reminder, skip it 80% of times, just to diversify the message times
+            if random.random() < 0.8:
                 continue
 
             # now just doing as if the user has pressed "resume"
@@ -403,4 +408,4 @@ class DialogueManager:
                         self.db.save_user(user)
                         logger.info(f'Unsubscribing the user {user.user_id} after an unsuccessful Telegram push ({description})')
 
-            time.sleep(5)  # 5 seconds between each user, to avoid spamming
+            time.sleep(5)  # 5 seconds between each user, to avoid overload
