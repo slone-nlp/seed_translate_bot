@@ -214,11 +214,10 @@ class Database:
         return [UserState.model_construct(**obj) for obj in self.mongo_users.find()]
 
     def get_new_task(self, user: UserState) -> Optional[TransTask]:
-        # TODO(future): in the future, filter by the current project and its languages
         self.cleanup_locked_tasks()
         unfinished_task_ids = {
             (task["task_id"], task["completions"])
-            for task in self.trans_tasks.find({"completed": False, "locked": False})
+            for task in self.trans_tasks.find({"completed": False, "locked": False, "project_id": user.curr_proj_id})
         }
         if len(unfinished_task_ids) == 0:
             # if all unfinished tasks are locked, pick any of the locked ones
@@ -609,7 +608,7 @@ class Database:
                 n_unlock += 1
         print(f"Unlocked {n_unlock} tasks.")
 
-    def get_projets(self, active: Optional[bool] = None) -> List[TransProject]:
+    def get_projects(self, active: Optional[bool] = None) -> List[TransProject]:
         fltr = {}
         if active is not None:
             fltr["is_active"] = active

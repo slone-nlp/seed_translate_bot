@@ -173,7 +173,7 @@ class DialogueManager:
             )
 
         elif text == '/projects':
-            active_projects = self.db.get_projets(active=True)
+            active_projects = self.db.get_projects(active=True)
             if len(active_projects) == 0:
                 response = "Активных проектов в настоящий момент не найдено. Напишите @cointegrated, если вы хотите начать новый проект."
                 self.send_text_to_user(
@@ -187,7 +187,7 @@ class DialogueManager:
                         part = part + " <b>(выбран)</b>"
                     if project.description:
                         part = part + " " + project.description
-                    if project.src_code and project.tgt_coode:
+                    if project.src_code and project.tgt_code:
                         part = f"{part}\n({project.src_code}->{project.tgt_code})"
                     response_parts.append(part)
                 response_parts.append("Если вы хотите выбрать другой проект, выберите его с помощью кнопок или цифр.")
@@ -200,11 +200,12 @@ class DialogueManager:
                 )
 
         elif user.state_id == States.SUGGEST_CHOOSE_PROJECT and text.isnumeric():
-            active_projects = self.db.get_projets(active=True)
+            active_projects = self.db.get_projects(active=True)
             id2project = {str(i+1): project for i, project in enumerate(active_projects)}
             if text.strip() in id2project:
                 project = id2project[text]
                 user.curr_proj_id = project.project_id
+                user.state_id = None
                 self.db.save_user(user)
                 self.send_text_to_user(
                     user.user_id, f"Вы успешно выбрали проект {project.title}!\nНажмите /task, чтобы приступить к выполнению заданий.",
