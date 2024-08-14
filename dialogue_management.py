@@ -172,6 +172,52 @@ class DialogueManager:
                 user.user_id, response, suggests=suggests, parse_mode="html"
             )
 
+        elif text == '/projects':
+            active_projects = self.db.get_projets(active=True)
+            if len(active_projects) == 0:
+                response = "Активных проектов в настоящий момент не найдено. Напишите @cointegrated, если вы хотите начать новый проект."
+                self.send_text_to_user(
+                    user.user_id, response, suggests=suggested_suggests, parse_mode="html"
+                )
+            else:
+                response_parts = ["Вот список всех активных проектов:"]
+                for i, project in enumerate(active_projects):
+                    part = f"{i+1}) {project.title}"
+                    if project.project_id == user.curr_proj_id:
+                        part = part + " <b>(выбран)</b>"
+                    if project.description:
+                        part = part + " " + project.description
+                    if project.src_code and project.tgt_coode:
+                        part = f"{part}\n({project.src_code}->{project.tgt_code})"
+                    response_parts.append(part)
+                response_parts.append("Если вы хотите выбрать другой проект, выберите его с помощью кнопок или цифр.")
+                response = "\n\n".join(response_parts)
+                suggests = [str(i+1) for i, project in enumerate(active_projects)] + suggested_suggests
+                user.state_id = States.SUGGEST_CHOOSE_PROJECT
+                self.db.save_user(user)
+                self.send_text_to_user(
+                    user.user_id, response, suggests=suggests, parse_mode="html"
+                )
+
+        elif user.state_id == States.SUGGEST_CHOOSE_PROJECT and text.isnumeric():
+            active_projects = self.db.get_projets(active=True)
+            id2project = {str(i+1): project for i, project in enumerate(active_projects)}
+            if text.strip() in id2project:
+                project = id2project[text]
+                user.curr_proj_id = project.project_id
+                self.db.save_user(user)
+                self.send_text_to_user(
+                    user.user_id, f"Вы успешно выбрали проект {project.title}!\nНажмите /task, чтобы приступить к выполнению заданий.",
+                    suggests=suggested_suggests, parse_mode="html"
+                )
+            else:
+                user.state_id = None
+                self.db.save_user(user)
+                self.send_text_to_user(
+                    user.user_id, "Такого проекта не найдено. Нажмите /projects, если хотите попробовать снова.",
+                    suggests=suggested_suggests, parse_mode="html"
+                )
+
         # The main scenario
         elif (
             text in {"/task"}
@@ -181,12 +227,21 @@ class DialogueManager:
                 and text in {texts.RESP_YES}
             )
         ):
+            if user.curr_proj_id is None:
+                response = "Вы не выбрали проект. Нажмите /projects, чтобы выбрать его из списка."
+                self.send_text_to_user(
+                    user_id,
+                    response,
+                    suggests=["/projects"] + suggested_suggests,
+                )
+
             # TODO(nice): check if there is an unfinished current task, and deal with it properly
             task = self.db.get_new_task(user=user)
             if task is None:
                 self.send_text_to_user(
                     user_id,
-                    "Сейчас для вас нет никаких заданий! Попробуйте зайти позже, проверить чужие переводы.",
+                    "Сейчас в выбранном проекте для вас нет никаких заданий! "
+                    "Попробуйте зайти позже, проверить чужие переводы. Или выберите другой проект командой /projects.",
                     reply_markup=default_markup,
                 )
             else:

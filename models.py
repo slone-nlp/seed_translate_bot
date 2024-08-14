@@ -90,6 +90,8 @@ class TransProject(BaseModel):
     overlap: int = 2
     # what is the minimal semantic score (XSTS) considered as approval
     min_score: int = 4
+    is_active: bool = True
+    parent_project_id: Optional[int] = None
 
 
 class TransTask(BaseModel):
@@ -606,3 +608,14 @@ class Database:
                 self.save_task(task)
                 n_unlock += 1
         print(f"Unlocked {n_unlock} tasks.")
+
+    def get_projets(self, active: Optional[bool] = None) -> List[TransProject]:
+        fltr = {}
+        if active is not None:
+            fltr["is_active"] = active
+        projects = [
+            TransProject.model_construct(**obj)
+            for obj in self.trans_projects.find(fltr)
+        ]
+        projects = sorted(projects, key=lambda x: x.project_id)
+        return projects
