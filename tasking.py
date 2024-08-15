@@ -35,6 +35,7 @@ def do_assign_input(
                 task.completed = True
             db.save_task(task)
             db.add_user_task_link(user_id=user.user_id, task=task)
+            db.update_task_status(task=task)  # this is a slow operation, but let's do it for the sake of correctness
 
             user.curr_sent_id = None
             user.curr_task_id = None

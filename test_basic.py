@@ -77,6 +77,19 @@ def test_basic_scenario():
     manager.respond(msg)
     assert texts.HELP in bot.last_message.text
 
+    # Ask for the task and get asked to choose the project
+    manager.respond(get_test_message("/task"))
+    assert "Вы не выбрали проект." in bot.last_message.text
+
+    manager.respond(get_test_message("/projects"))
+    assert "Test project" in bot.last_message.text
+    assert "1" in bot.last_message.text
+
+    # choose the project and be prompted to choose tasks
+    manager.respond(get_test_message("1"))
+    assert "выбрали проект" in bot.last_message.text
+    assert "/task" in bot.last_message.text
+
     # Ask for the task and get the first and only one
     manager.respond(get_test_message("/task"))
     assert "first task prompt" in bot.last_message.text

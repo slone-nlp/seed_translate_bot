@@ -93,6 +93,7 @@ class DialogueManager:
 
         user.last_activity_time = time.time()
         user.n_last_reminders = 0
+        user.is_blocked = False
         self.db.save_user(user)
 
         self.db.mongo_messages.insert_one(
@@ -235,31 +236,31 @@ class DialogueManager:
                     response,
                     suggests=["/projects"] + suggested_suggests,
                 )
-
-            # TODO(nice): check if there is an unfinished current task, and deal with it properly
-            task = self.db.get_new_task(user=user)
-            if task is None:
-                self.send_text_to_user(
-                    user_id,
-                    "Сейчас в выбранном проекте для вас нет никаких заданий! "
-                    "Попробуйте зайти позже, проверить чужие переводы. Или выберите другой проект командой /projects.",
-                    reply_markup=default_markup,
-                )
             else:
-                resp = f"Новое задание: #{task.task_id}."
-                if task.prompt:
-                    resp += "\n" + task.prompt
-                resp += (
-                    "\nГотовы к выполнению этого задания или хотите попробовать другое?"
-                )
-                suggests = [texts.RESP_TAKE_TASK, texts.RESP_SKIP_TASK]
-                user.curr_proj_id = task.project_id
-                user.curr_task_id = task.task_id
-                user.state_id = States.SUGGEST_TASK
-                self.db.save_user(user)
-                self.send_text_to_user(
-                    user_id, resp, suggests=suggests, parse_mode="html"
-                )
+                # TODO(nice): check if there is an unfinished current task, and deal with it properly
+                task = self.db.get_new_task(user=user)
+                if task is None:
+                    self.send_text_to_user(
+                        user_id,
+                        "Сейчас в выбранном проекте для вас нет никаких заданий! "
+                        "Попробуйте зайти позже, проверить чужие переводы. Или выберите другой проект командой /projects.",
+                        reply_markup=default_markup,
+                    )
+                else:
+                    resp = f"Новое задание: #{task.task_id}."
+                    if task.prompt:
+                        resp += "\n" + task.prompt
+                    resp += (
+                        "\nГотовы к выполнению этого задания или хотите попробовать другое?"
+                    )
+                    suggests = [texts.RESP_TAKE_TASK, texts.RESP_SKIP_TASK]
+                    user.curr_proj_id = task.project_id
+                    user.curr_task_id = task.task_id
+                    user.state_id = States.SUGGEST_TASK
+                    self.db.save_user(user)
+                    self.send_text_to_user(
+                        user_id, resp, suggests=suggests, parse_mode="html"
+                    )
 
         elif user.state_id == States.SUGGEST_ONE_MORE_TASK and text in {texts.RESP_NO}:
             resp, suggests = tasking.do_not_assing_new_task(user=user, db=self.db)

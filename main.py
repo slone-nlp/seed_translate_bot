@@ -7,7 +7,7 @@ import os
 import sentry_sdk
 from apscheduler.schedulers.background import BackgroundScheduler  # type: ignore
 
-from app import DM, bot, server, web_hook
+from app import DM, bot, server, web_hook, DB
 
 logging.basicConfig(level=logging.DEBUG)
 
@@ -25,8 +25,9 @@ scheduler.add_job(DM.run_reminders, "cron", hour=18, jitter=60 * 1)
 
 # Rerun the scheduler every couple of hours (with a jitter of a whole hour)
 scheduler.add_job(DM.run_reminders, 'interval', hours=2, jitter=60 * 60)
-# # scheduler.add_job(pusher.wake_up, 'cron', minute='*/5') # debug every 5 minutes
-# scheduler.add_job(pusher.check_jobs, 'interval', minutes=1, jitter=15)
+
+# Update the tasks statuses every 3 hours
+scheduler.add_job(DB.update_all_task_statuses, 'interval', hours=3, jitter=60 * 60)
 
 
 def main():
