@@ -103,16 +103,23 @@ class TransTask(BaseModel):
     locked: bool = False
     completed: bool = False
     meta: Optional[Dict] = None
-    completion_stats: Optional[Dict[str, int]] = None  # Counter of InputStatus values of its inputs
+    completion_stats: Optional[Dict[str, int]] = (
+        None  # Counter of InputStatus values of its inputs
+    )
 
     @property
     def incompleteness_score(self) -> int:
-        """ Priority (higher = more important) in terms of covering all inputs with translations."""
+        """Priority (higher = more important) in terms of covering all inputs with translations."""
         if self.completion_stats is None:
             return 0
         score = self.completion_stats.get(InputStatus.NO_TRANSLATION, 0) * 100_000
-        score += self.completion_stats.get(InputStatus.UNCHECKED_SYSTEM_TRANSLATION, 0) * 1_000
-        score += self.completion_stats.get(InputStatus.UNCHECKED_USER_TRANSLATION, 0) * 10
+        score += (
+            self.completion_stats.get(InputStatus.UNCHECKED_SYSTEM_TRANSLATION, 0)
+            * 1_000
+        )
+        score += (
+            self.completion_stats.get(InputStatus.UNCHECKED_USER_TRANSLATION, 0) * 10
+        )
         score += self.completion_stats.get(InputStatus.PARTIALLY_ACCEPTED, 0) * 1
         return score
 
@@ -141,6 +148,22 @@ class InputStatus:
     UNCHECKED_USER_TRANSLATION = "2_unchecked_user_translation"
     PARTIALLY_ACCEPTED = "3_partially_accepted"
     ACCEPTED = "4_accepted"
+
+
+class PrioritizeType:
+    RANDOM = "/task_random"
+    LEAST_COMPLETIONS = "/task_least_completions"
+    LEAST_COMPLETE = "/task_least_complete"
+    MOST_COMPLETE = "/task_most_complete"
+
+    @classmethod
+    def all(cls) -> Set[str]:
+        return {
+            cls.RANDOM,
+            cls.LEAST_COMPLETE,
+            cls.MOST_COMPLETE,
+            cls.LEAST_COMPLETIONS,
+        }
 
 
 class TransResult(BaseModel):
@@ -238,30 +261,29 @@ class Database:
     def get_incomplete_tasks_for_project(self, project_id: int) -> List[TransTask]:
         tasks = [
             TransTask.model_construct(**obj)
-            for obj in self.trans_tasks.find({
-                "completed": False,
-                "project_id": project_id,
-            })
+            for obj in self.trans_tasks.find(
+                {
+                    "completed": False,
+                    "project_id": project_id,
+                }
+            )
         ]
         return tasks
 
-    def get_new_task(self, user: UserState) -> Optional[TransTask]:
+    def get_new_task(
+        self, user: UserState, prioritize_type: Optional[str] = None
+    ) -> Optional[TransTask]:
         if user.curr_proj_id is None:
             return None
         self.cleanup_locked_tasks()
         tasks = self.get_incomplete_tasks_for_project(project_id=user.curr_proj_id)
 
         unfinished_task_ids = {
-            (task.task_id, task.completions)
-            for task in tasks
-            if task.locked is False
+            (task.task_id, task.completions) for task in tasks if task.locked is False
         }
         if len(unfinished_task_ids) == 0:
             # if all unfinished tasks are locked, pick any of the locked ones
-            unfinished_task_ids = {
-                (task.task_id, task.completions)
-                for task in tasks
-            }
+            unfinished_task_ids = {(task.task_id, task.completions) for task in tasks}
         if len(unfinished_task_ids) == 0:
             logger.info(f"Did not find any unfinished tasks!")
             return None
@@ -285,15 +307,21 @@ class Database:
             # - or without pending (or accepted) translations at all
             unsolved_inputs = [
                 TransInput.model_construct(**obj)
-                for obj in self.trans_inputs.find({"solved": False, "project_id": user.curr_proj_id})
+                for obj in self.trans_inputs.find(
+                    {"solved": False, "project_id": user.curr_proj_id}
+                )
             ]
             pending_translations = [
                 TransResult.model_construct(**obj)
-                for obj in self.trans_results.find({"status": TransStatus.UNCHECKED, "project_id": user.curr_proj_id})
+                for obj in self.trans_results.find(
+                    {"status": TransStatus.UNCHECKED, "project_id": user.curr_proj_id}
+                )
             ]
             user_labels = [
                 TransLabel.model_construct(**obj)
-                for obj in self.trans_labels.find({"user_id": user.user_id, "project_id": user.curr_proj_id})
+                for obj in self.trans_labels.find(
+                    {"user_id": user.user_id, "project_id": user.curr_proj_id}
+                )
             ]
 
             translation_ids_labeled_by_user = {
@@ -327,9 +355,11 @@ class Database:
         # choose the specific task
         id2priority = {task.task_id: task.incompleteness_score for task in tasks}
 
-        r = random.random()
+        if prioritize_type not in PrioritizeType.all():
+            prioritize_type = random.choice(list(PrioritizeType.all()))
+
         n = len(unfinished_task_ids)
-        if r < 0.25:
+        if prioritize_type == PrioritizeType.LEAST_COMPLETIONS:
             # 1/4 of the time, prioritize the tasks with the lowest number of completions
             min_completion = min(
                 [completion for task_id, completion in unfinished_task_ids]
@@ -341,11 +371,16 @@ class Database:
             ]
 
             task_id = random.choice(least_completed_ids)
-            logger.info(f"Chose the task {task_id} among {n} options (least completions)")
-        elif r < 0.5:
+            logger.info(
+                f"Chose the task {task_id} among {n} options (least completions)"
+            )
+        elif prioritize_type == PrioritizeType.LEAST_COMPLETE:
             # 1/4 of the time, prioritize the tasks with the highest incompleteness score
             max_score = max(
-                [id2priority.get(task_id, 0) for task_id, completion in unfinished_task_ids]
+                [
+                    id2priority.get(task_id, 0)
+                    for task_id, completion in unfinished_task_ids
+                ]
             )
             least_completed_ids = [
                 task_id
@@ -353,11 +388,16 @@ class Database:
                 if id2priority.get(task_id, 0) == max_score
             ]
             task_id = random.choice(least_completed_ids)
-            logger.info(f"Chose the task {task_id} among {n} options (the most incomplete)")
-        elif r < 0.75:
+            logger.info(
+                f"Chose the task {task_id} among {n} options (the most incomplete)"
+            )
+        elif prioritize_type == PrioritizeType.MOST_COMPLETE:
             # 1/4 of the time, prioritize the tasks with the lowest incompleteness score (i.e. almost complete)
             min_score = min(
-                [id2priority.get(task_id, 0) for task_id, completion in unfinished_task_ids]
+                [
+                    id2priority.get(task_id, 0)
+                    for task_id, completion in unfinished_task_ids
+                ]
             )
             most_completed_ids = [
                 task_id
@@ -365,7 +405,9 @@ class Database:
                 if id2priority.get(task_id, 0) == min_score
             ]
             task_id = random.choice(most_completed_ids)
-            logger.info(f"Chose the task {task_id} among {n} options (the most complete).")
+            logger.info(
+                f"Chose the task {task_id} among {n} options (the most complete)."
+            )
         else:
             task_id, _ = random.choice(list(unfinished_task_ids))
             logger.info(f"Chose the task {task_id} among {n} options (at random).")
@@ -404,9 +446,7 @@ class Database:
     def get_inputs_for_task(self, task: TransTask) -> List[TransInput]:
         return [
             TransInput.model_construct(**obj)
-            for obj in self.trans_inputs.find(
-                {"task_id": task.task_id}
-            )
+            for obj in self.trans_inputs.find({"task_id": task.task_id})
         ]
 
     def get_next_unsolved_input(
@@ -665,11 +705,15 @@ class Database:
     def cleanup_locked_tasks(self):
         users = self.get_all_users()
         now = time.time()
-        seconds_to_inactivation = 60 * 60 * 24 * 7  # after 7 days, we treat the user as inactive and unblock the task
+        seconds_to_inactivation = (
+            60 * 60 * 24 * 7
+        )  # after 7 days, we treat the user as inactive and unblock the task
         real_locked_task_ids = {
             u.curr_task_id
             for u in users
-            if u.curr_task_id is not None and not u.is_blocked and ((u.last_activity_time or 0) > now - seconds_to_inactivation)
+            if u.curr_task_id is not None
+            and not u.is_blocked
+            and ((u.last_activity_time or 0) > now - seconds_to_inactivation)
         }
         locked_tasks = [
             TransTask.model_construct(**obj)
@@ -728,8 +772,8 @@ class Database:
         self.save_task(task=task)
 
     def update_all_task_statuses(self) -> None:
-        """ This function is slow; it takes a couple seconds per task"""
+        """This function is slow; it takes a couple seconds per task"""
         for obj in self.trans_tasks.find({}):
-            task = self.get_task(task_id=obj['task_id'])
+            task = self.get_task(task_id=obj["task_id"])
             if task is not None:
                 self.update_task_status(task)

@@ -173,12 +173,15 @@ class DialogueManager:
                 user.user_id, response, suggests=suggests, parse_mode="html"
             )
 
-        elif text == '/projects':
+        elif text == "/projects":
             active_projects = self.db.get_projects(active=True)
             if len(active_projects) == 0:
                 response = "Активных проектов в настоящий момент не найдено. Напишите @cointegrated, если вы хотите начать новый проект."
                 self.send_text_to_user(
-                    user.user_id, response, suggests=suggested_suggests, parse_mode="html"
+                    user.user_id,
+                    response,
+                    suggests=suggested_suggests,
+                    parse_mode="html",
                 )
             else:
                 response_parts = ["Вот список всех активных проектов:"]
@@ -191,9 +194,13 @@ class DialogueManager:
                     if project.src_code and project.tgt_code:
                         part = f"{part}\n({project.src_code}->{project.tgt_code})"
                     response_parts.append(part)
-                response_parts.append("Если вы хотите выбрать другой проект, выберите его с помощью кнопок или цифр.")
+                response_parts.append(
+                    "Если вы хотите выбрать другой проект, выберите его с помощью кнопок или цифр."
+                )
                 response = "\n\n".join(response_parts)
-                suggests = [str(i+1) for i, project in enumerate(active_projects)] + suggested_suggests
+                suggests = [
+                    str(i + 1) for i, project in enumerate(active_projects)
+                ] + suggested_suggests
                 user.state_id = States.SUGGEST_CHOOSE_PROJECT
                 self.db.save_user(user)
                 self.send_text_to_user(
@@ -202,27 +209,34 @@ class DialogueManager:
 
         elif user.state_id == States.SUGGEST_CHOOSE_PROJECT and text.isnumeric():
             active_projects = self.db.get_projects(active=True)
-            id2project = {str(i+1): project for i, project in enumerate(active_projects)}
+            id2project = {
+                str(i + 1): project for i, project in enumerate(active_projects)
+            }
             if text.strip() in id2project:
                 project = id2project[text]
                 user.curr_proj_id = project.project_id
                 user.state_id = None
                 self.db.save_user(user)
                 self.send_text_to_user(
-                    user.user_id, f"Вы успешно выбрали проект {project.title}!\nНажмите /task, чтобы приступить к выполнению заданий.",
-                    suggests=suggested_suggests, parse_mode="html"
+                    user.user_id,
+                    f"Вы успешно выбрали проект {project.title}!\nНажмите /task, чтобы приступить к выполнению заданий.",
+                    suggests=suggested_suggests,
+                    parse_mode="html",
                 )
             else:
                 user.state_id = None
                 self.db.save_user(user)
                 self.send_text_to_user(
-                    user.user_id, "Такого проекта не найдено. Нажмите /projects, если хотите попробовать снова.",
-                    suggests=suggested_suggests, parse_mode="html"
+                    user.user_id,
+                    "Такого проекта не найдено. Нажмите /projects, если хотите попробовать снова.",
+                    suggests=suggested_suggests,
+                    parse_mode="html",
                 )
 
         # The main scenario
         elif (
             text in {"/task"}
+            or text in models.PrioritizeType.all()
             or (user.state_id == States.SUGGEST_TASK and text in {texts.RESP_SKIP_TASK})
             or (
                 user.state_id == States.SUGGEST_ONE_MORE_TASK
@@ -238,7 +252,12 @@ class DialogueManager:
                 )
             else:
                 # TODO(nice): check if there is an unfinished current task, and deal with it properly
-                task = self.db.get_new_task(user=user)
+                task = self.db.get_new_task(
+                    user=user,
+                    prioritize_type=(
+                        text if text in models.PrioritizeType.all() else None
+                    ),
+                )
                 if task is None:
                     self.send_text_to_user(
                         user_id,
@@ -250,9 +269,7 @@ class DialogueManager:
                     resp = f"Новое задание: #{task.task_id}."
                     if task.prompt:
                         resp += "\n" + task.prompt
-                    resp += (
-                        "\nГотовы к выполнению этого задания или хотите попробовать другое?"
-                    )
+                    resp += "\nГотовы к выполнению этого задания или хотите попробовать другое?"
                     suggests = [texts.RESP_TAKE_TASK, texts.RESP_SKIP_TASK]
                     user.curr_proj_id = task.project_id
                     user.curr_task_id = task.task_id
@@ -456,13 +473,19 @@ class DialogueManager:
                 )
             except Exception as e:
                 sentry_sdk.capture_exception(e)
-                logger.info(f'Error when pushing a message: {e}')
+                logger.info(f"Error when pushing a message: {e}")
                 if isinstance(e, ApiTelegramException):
-                    description = e.result_json.get('description', '') if e.result_json else ''
-                    if description and ('blocked' in description or 'user is deactivated' in description):
+                    description = (
+                        e.result_json.get("description", "") if e.result_json else ""
+                    )
+                    if description and (
+                        "blocked" in description or "user is deactivated" in description
+                    ):
                         user.is_blocked = True
                         user.block_log = str(e)
                         self.db.save_user(user)
-                        logger.info(f'Unsubscribing the user {user.user_id} after an unsuccessful Telegram push ({description})')
+                        logger.info(
+                            f"Unsubscribing the user {user.user_id} after an unsuccessful Telegram push ({description})"
+                        )
 
             time.sleep(5)  # 5 seconds between each user, to avoid overload
