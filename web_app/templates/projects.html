@@ -1,0 +1,32 @@
+{% extends 'base.html' %}
+{% set active_page = "home" %}
+
+{% block content %}
+  <main>
+    <h1>Our current projects</h1>
+    <div>
+      <table class="table">
+        <thead>
+          <tr>
+            <th> Title </th>
+            <th> Description </th>
+            <th> Target language </th>
+            <th> Is active? </th>
+          </tr>
+        </thead>
+
+        <tbody>
+        {% for project in projects_list %}
+          <tr>
+            <td>{{ project.title }}</td>
+            <td><p>{{ project.description or "-"}}</p></td>
+            <td>{{ project.tgt_code }}</td>
+            <td>{{ "Yes" if project.is_active else "No" }}</td>
+          </tr>
+        {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </main>
+
+{% endblock %}

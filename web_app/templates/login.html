@@ -1,0 +1,53 @@
+{% extends 'base.html' %}
+
+{% block title %} YALLA | Login {% endblock %}
+
+{% block content %}
+    <div id="main">
+        <h1>{{_('Please login using Telegram or some other way!')}}</h1>
+        <div class="row">
+          <div class="col-md-4"></div>
+          <div class="col-md-4">
+            <main class="form-signin w-100 m-auto">
+              <form role="form" method="post" action="">
+                {{ form.csrf_token }}
+                <h1 class="h3 mb-3 fw-normal text-center">{{_('Please sign in')}}</h1>
+
+                <div class="mb-3">
+                  {{ form.username.label }}
+                  {{ form.username(placeholder="username", class="form-control mb-2") }}
+                    {% if form.username.errors %}
+                      {% for error in form.username.errors %}
+                      <div class="alert alert-danger" role="alert">
+                        {{ error }}
+                      </div>
+                      {% endfor %}
+                    {% endif %}
+                </div>
+                <div class="mb-3">
+                  {{ form.password.label }}
+                  {{ form.password(placeholder="password", class="form-control mb-2") }}
+                    {% if form.password.errors %}
+                      {% for error in form.password.errors %}
+                        <div class="alert alert-danger" role="alert">
+                          {{ error }}
+                        </div>
+                      {% endfor %}
+                    {% endif %}
+                </div>
+                <button class="w-100 btn btn-lg btn-primary" type="submit">{{_('Sign in')}}</button>
+                <p class="text-center mt-3">{{_('New User?')}} <a href="/register">{{_('Register now')}}</a></p>
+              </form>
+            </main>
+          </div>
+          <div class="col-md-4"></div>
+        </div>
+
+        <h1>{{_('You can also login or register via Telegram')}}</h1>
+         <div class="text-center">
+             <div class="container">
+                 <script async src="https://telegram.org/js/telegram-widget.js?22" data-telegram-login="{{ login_data['bot_name'] }}" data-size="small" data-auth-url="{{ login_data['bot_domain'] }}"></script>
+             </div>
+         </div>
+    </div>
+{% endblock %}

@@ -1,0 +1,55 @@
+{% extends 'base.html' %}
+
+{% block title %} YALLA | {{_('Register')}} {% endblock %}
+
+{% block content %}
+  {# copied from https://www.freecodecamp.org/news/how-to-setup-user-authentication-in-flask/ #}
+    <div class="row">
+      <div class="col-md-4"></div>
+      <div class="col-md-4">
+        <main class="form-signin w-100 m-auto">
+          <form role="form" method="post" action="">
+            {{ form.csrf_token }}
+            <h1 class="h3 mb-3 fw-normal text-center">{{_('Please register')}}</h1>
+
+            <div class="mb-3">
+              {{ form.username.label }}
+              {{ form.username(placeholder="username", class="form-control mb-2") }}
+                {% if form.username.errors %}
+                  {% for error in form.username.errors %}
+                    <div class="alert alert-danger" role="alert">
+                      {{ error }}
+                    </div>
+                  {% endfor %}
+                {% endif %}
+            </div>
+            <div class="mb-3">
+              {{ form.password.label }}
+              {{ form.password(placeholder="password", class="form-control mb-2") }}
+                {% if form.password.errors %}
+                  {% for error in form.password.errors %}
+                    <div class="alert alert-danger" role="alert">
+                      {{ error }}
+                    </div>
+                  {% endfor %}
+                {% endif %}
+            </div>
+            <div class="mb-3">
+              {{ form.confirm.label }}
+              {{ form.confirm(placeholder="Confirm Password", class="form-control mb-2") }}
+                {% if form.confirm.errors %}
+                  {% for error in form.confirm.errors %}
+                    <div class="alert alert-danger" role="alert">
+                      {{ error }}
+                    </div>
+                  {% endfor %}
+                {% endif %}
+            </div>
+            <button class="w-100 btn btn-lg btn-primary" type="submit">{{_('Sign up')}}</button>
+            <p class="text-center mt-3">{{_('Already registered?')}} <a href="/login">{{_('Login now')}}</a></p>
+          </form>
+        </main>
+      </div>
+      <div class="col-md-4"></div>
+    </div>
+{% endblock %}

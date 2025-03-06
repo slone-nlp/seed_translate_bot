@@ -1,0 +1,51 @@
+{% extends 'base.html' %}
+{% set active_page = "settings" %}
+
+{% block title %} YALLA | {{_('Settings')}} {% endblock %}
+
+{% block content %}
+    <h1>{{_('Settings')}}</h1>
+    <main class="w-100 m-auto">
+        <div class="col-md-4">
+          <form role="form" method="post" action="">
+            {{ form.hidden_tag() }}
+            <div class="mb-3">
+              {{ form.known_lang.label }}
+              {{ form.known_lang(class="form-control mb-2") }}
+                {% if form.known_lang.errors %}
+                  {% for error in form.known_lang.errors %}
+                    <div class="alert alert-danger" role="alert">
+                      {{ error }}
+                    </div>
+                  {% endfor %}
+                {% endif %}
+            </div>
+            <div class="mb-3">
+              {{ form.new_lang.label }}
+              {{ form.new_lang(class="form-control mb-2") }}
+                {% if form.new_lang.errors %}
+                  {% for error in form.new_lang.errors %}
+                    <div class="alert alert-danger" role="alert">
+                      {{ error }}
+                    </div>
+                  {% endfor %}
+                {% endif %}
+            </div>
+            <div class="mb-3">
+              {{ form.interface_lang.label }}
+              {{ form.interface_lang(class="form-control mb-2") }}
+                {% if form.interface_lang.errors %}
+                  {% for error in form.interface_lang.errors %}
+                    <div class="alert alert-danger" role="alert">
+                      {{ error }}
+                    </div>
+                  {% endfor %}
+                {% endif %}
+            </div>
+            <button type="submit" class="btn btn-primary">{{_("Save")}}</button>
+          </form>
+        </div>
+        <a href="/set-password">{{_('Set or change your password')}}</a>
+    </main>
+
+{% endblock %}

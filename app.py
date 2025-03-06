@@ -21,7 +21,7 @@ TELEBOT_URL = "telegram/"
 
 bot = telebot.TeleBot(TOKEN)
 
-server = Flask(__name__)
+server = Flask(__name__, template_folder="web_app/templates")
 
 DB: models.Database = models.Database.setup(mongo_url=MONGO_URL)
 

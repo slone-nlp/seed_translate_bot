@@ -5,3 +5,7 @@ mongomock
 pydantic
 sentry-sdk
 apscheduler
+flask-wtf
+flask-babel
+flask-login
+flask-bcrypt

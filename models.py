@@ -1,6 +1,7 @@
 import logging
 import random
 import time
+import typing as tp
 from collections import Counter
 from typing import Dict, List, Optional, Set, Union
 
@@ -9,6 +10,8 @@ import telebot  # type: ignore
 from pydantic import BaseModel  # type: ignore
 from pymongo import MongoClient  # type: ignore
 from pymongo.collection import Collection  # type: ignore
+
+from flask_login import UserMixin
 
 logger = logging.getLogger(__name__)
 
@@ -19,7 +22,11 @@ COHERENT = 1
 INCOHERENT = 0
 
 
+# This is the user representation tailored for Telegram (but not only)
 class UserState(BaseModel):
+    # Base account information for web users
+    password_hash: Optional[str] = None
+
     # Telegram information
     user_id: Optional[int] = None
     username: Optional[str] = None
@@ -53,6 +60,9 @@ class UserState(BaseModel):
     last_activity_time: Optional[float] = None
     last_reminder_time: Optional[float] = None
     n_last_reminders: int = 0
+
+    # web settings
+    interface_lang: Optional[str] = None
 
 
 def update_user_state(users_collection: Collection, state: UserState):
@@ -216,6 +226,39 @@ class TransLabel(BaseModel):
         else:
             # before this date, the coherence score was 2-level, and all coherent texts were accepted
             return self.is_coherent and self.semantics_score >= semantic_threshold
+
+
+# silly user model
+class FlaskUser(UserMixin):
+    def __init__(
+        self,
+        id: int,
+        is_real: bool = False,
+        username=None,
+        user_state: Optional[UserState] = None,
+    ):
+        self.id = id
+        self.username = username
+
+        self.is_real = is_real
+        self.user_state: Optional[UserState] = user_state
+
+    @property
+    def is_authenticated(self):
+        return bool(self.is_real)
+
+    @classmethod
+    def from_account(cls, user_state: UserState) -> "FlaskUser":
+        # TODO: set the rest of the fields correctly
+        return FlaskUser(
+            id=user_state.user_id,
+            username=user_state.username,
+            user_state=user_state,
+            is_real=True
+        )
+
+    def __repr__(self):
+        return str(self.id)
 
 
 class Database:
@@ -763,7 +806,7 @@ class Database:
 
     def update_task_status(self, task: TransTask) -> None:
         inputs = self.get_inputs_for_task(task=task)
-        cnt: Counter[str] = Counter()
+        cnt: tp.Counter[str] = Counter()
         for inp in inputs:
             self.update_input_status(inp=inp)
             cnt[inp.input_status or "undefined"] += 1
@@ -777,3 +820,43 @@ class Database:
             task = self.get_task(task_id=obj["task_id"])
             if task is not None:
                 self.update_task_status(task)
+
+    # Web user management
+    def find_user_account(
+        self,
+        username: Optional[str] = None,
+        user_id: Optional[int] = None,
+    ) -> Optional[UserState]:
+        if username is not None:
+            obj = self.mongo_users.find_one({"username": username})
+        elif user_id is not None:
+            obj = self.mongo_users.find_one({"user_id": user_id})
+        else:
+            obj = None
+
+        if obj:
+            return UserState.model_construct(**obj)
+
+    def create_user_with_password(
+        self, username: str, password_hash: str
+    ) -> UserState:
+        assert username is not None
+        # TODO: validate that no other user with this username exists
+
+        user_id = self._get_next_user_id()
+        account = UserState(
+            user_id=user_id,
+            username=username,
+            password_hash=password_hash,
+        )
+        dumped = account.model_dump()
+        self.mongo_users.insert_one(dumped)
+        return account
+
+    def _get_next_user_id(self) -> int:
+        # returning negative ids, because positive ones are already reserved by Telegram users
+        next_uid = -1
+        for obj in self.mongo_users.find():
+            next_uid = min(next_uid, obj.get("user_id", -1) - 1)
+
+        return next_uid

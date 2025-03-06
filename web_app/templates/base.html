@@ -1,0 +1,141 @@
+{% set active_page = active_page|default('home') -%}
+
+<head>
+    <!-- Required meta tags -->
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
+
+    <title>{% block title %} Crowd Translate App {% endblock %}</title>
+
+    <!-- Bootstrap CSS -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet" integrity="sha384-QWTKZyjpPEjISv5WaRU9OFeRpok6YctnYmDr5pNlyT2bRjXh0JMhjY6hW+ALEwIH" crossorigin="anonymous">
+    <style>
+        #main {
+            margin: auto;
+            width: 80%;
+             padding: 10px;
+        }
+
+        #main textarea {
+          width: 80%;
+          height: 150px;
+        }
+
+        a.long-clickable {
+          color: inherit;
+          text-decoration: none;
+        }
+
+
+    </style>
+    {% block customscript %} {% endblock %}
+    {% block customstyle %} {% endblock %}
+</head>
+
+<body class="d-flex flex-column min-vh-100">
+    {% block navbar %}
+        {# TODO: wrap it into a real nice bootstrap bar #}
+        <nav class="navbar navbar-expand-lg bg-body-tertiary">
+            <div class="container-fluid">
+                <a class="navbar-brand" href="#">CrowdTranslate</a>
+                <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarSupportedContent" aria-controls="navbarSupportedContent" aria-expanded="false" aria-label="Toggle navigation">
+                  <span class="navbar-toggler-icon"></span>
+                </button>
+                <div class="collapse navbar-collapse" id="navbarSupportedContent">
+                    <ul class="navbar-nav me-auto mb-2 mb-lg-0">
+                        <li class="nav-item">
+                            <a class="nav-link {% if 'home' == active_page %} active {% endif %}" href="/">{{ _('Home') }}</a>
+                        </li>
+                        <li class="nav-item">
+                            <a class="nav-link {% if 'projects' == active_page %} active {% endif %}" href="/projects">{{ _('Projects') }}</a>
+                        </li>
+                        <li class="nav-item">
+                            <a class="nav-link {% if 'translate' == active_page %} active {% endif %}" href="/trasnlate">{{ _('Translate') }}</a>
+                        </li>
+                        {% if current_user.is_authenticated %}
+
+                        <li class="nav-item">
+                            <a class="nav-link {% if 'settings' == active_page %} active {% endif %}" href="/settings">{{ _('Settings') }}</a>
+                        </li>
+                        {% endif %}
+                        <li class="nav-item dropdown">
+                          <a class="nav-link dropdown-toggle" href="#" role="button" data-bs-toggle="dropdown" aria-expanded="false">
+                            {{_('Language')}}: {{ flask_locale }}
+                          </a>
+                          <ul class="dropdown-menu">
+                            <li><a class="dropdown-item" href="/set-interface-language/en">en</a></li>
+                            <li><a class="dropdown-item" href="/set-interface-language/ru">ru</a></li>
+                          </ul>
+                        </li>
+                    </ul>
+                </div>
+                <div class="hstack gap-3">
+                    <!--<div class="vr"></div>-->
+                    <div>
+                        {% if current_user.is_authenticated %}
+                            {{ _('Logged in as') }} {{ current_user.username }}.
+                            <a href="/logout">{{ _('Log out') }}</a>
+                        {% else %}
+                            {{ _('Please') }} <a href="/login">{{ _('log in') }}</a> {{ _('or') }} <a href="/register">{{ _('register') }}</a>.
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+        </nav>
+    {% endblock %}
+
+    {% block flashed %}
+        {% with messages = get_flashed_messages(with_categories=true) %}
+          {% if messages %}
+          <div class="row">
+            <div class="col-md-4"></div>
+            <div class="col-md-4">
+              {% for category, message in messages %}
+              <div class="alert alert-{{ category }} alert-dismissible fade show" role="alert">
+               {{message}}
+               <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+              </div>
+              {% endfor %}
+            </div>
+            <div class="col-md-4"></div>
+          </div>
+          {% endif %}
+        {% endwith %}
+    {% endblock%}
+
+    {% block content %}
+        <div>This is a template for the content. Probably, this page is still in construction.</div>
+    {% endblock %}
+
+    {% block footer %}
+        <footer class="mt-auto">
+            <nav class="navbar bottom bg-body-tertiary">
+                <div class="container-fluid">
+                    YALLA team, 2024
+                    <div id="touch-indicator"></div>
+                </div>
+            </nav>
+        </footer>
+    {% endblock %}
+
+
+
+   <!-- Optional JavaScript -->
+    <!-- jQuery first, then Bootstrap JS bundle (which also includes Popper) -->
+    <!--    <script src="https://code.jquery.com/jquery-3.2.1.slim.min.js" integrity="sha384-KJ3o2DKtIkvYIK3UENzmM7KCkRr/rE9/Qpg6aAZGJwFDMVNA/GpGFF93hXpG5KkN" crossorigin="anonymous"></script>-->
+    <script src="https://code.jquery.com/jquery-3.7.1.min.js" integrity="sha256-/JqT3SQfawRcv/BIHPThkBvs0OEvtFFmqPF/lYI/Cxo=" crossorigin="anonymous"></script>
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js" integrity="sha384-YvpcrYf0tY3lHB60NNkmXc5s9fDVZLESaAA55NDzOxhy9GkcIdslK1eN7N6jIeHz" crossorigin="anonymous"></script>
+
+    <!-- jquery ui, for sortable and droppable things -->
+    <script src="https://code.jquery.com/ui/1.12.0/jquery-ui.min.js"></script>
+
+    <script type="text/javascript">
+        /***
+        Write any reusable functions here
+        ***/
+
+
+    </script>
+    {% block extra_script %}
+    {% endblock %}
+</body>
